@@ -27,6 +27,7 @@ static int active_row = -1;
 
 #include <avr/pgmspace.h>
 #include "hfont.h"
+#include "RTClib.h"
 #include <EEPROM.h>
 
 typedef enum {
@@ -420,8 +421,9 @@ void processCommand() {
       switch (command[2]) {
       case 'l': dir = LEFT; break;
       case 'r': dir = RIGHT; break;
-      case 'u': dir = UP; break;
-      case 'd': dir = DOWN; break;
+      // Up and down have been disabled
+      case 'u': //dir = UP; break;
+      case 'd': //dir = DOWN; break;
       case 'n': dir = NONE; break;
       default:
 	Serial2.println("Unrecognized direction");
