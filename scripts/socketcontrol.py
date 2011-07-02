@@ -58,12 +58,12 @@ while 1:
         client.send("Got it\n")
         mon.serialPort.flushInput()
         mon.serialPort.write(data)
-        mon.serialPort.flush()
         time.sleep(0.01)
         resp = ""
         n = mon.serialPort.inWaiting()
-        if n:
+        while n>0:
             resp = resp + mon.serialPort.read(n)
+            n = mon.serialPort.inWaiting()
         print "Response:", resp
         client.send("Response:")
         client.send(resp)
