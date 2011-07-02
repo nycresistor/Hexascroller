@@ -27,6 +27,7 @@ static int active_row = -1;
 
 #include <avr/pgmspace.h>
 #include "hfont.h"
+#include <Wire.h>
 #include "RTClib.h"
 #include <EEPROM.h>
 
@@ -382,7 +383,7 @@ void processCommand() {
       {
         if (command[2] == 'r') {
           char buf[26];
-          DateTime dt = RTC_DS1307.now();
+          DateTime dt = RTC_DS1307::now();
           sprintf(buf,"%02d/%02d/%02d %02d:%02d:%02d\n",
             dt.year() % 100, dt.month(), dt.day(),
             dt.hour(), dt.minute(), dt.second());

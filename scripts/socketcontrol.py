@@ -64,6 +64,7 @@ while 1:
         n = mon.serialPort.inWaiting()
         if n:
             resp = resp + mon.serialPort.read(n)
+        print "Response:", resp
         client.send("Response:")
         client.send(resp)
         client.send("\n") 
