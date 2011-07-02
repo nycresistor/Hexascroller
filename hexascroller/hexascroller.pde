@@ -378,6 +378,18 @@ void processCommand() {
       Serial2.print("MSG:");
       Serial2.println(message);
       break;
+    case 'B':
+      {
+        if (command[2] == 'r') {
+          char buf[26];
+          DateTime dt = RTC_DS1307.now();
+          sprintf(buf,"%02d/%02d/%02d %02d:%02d:%02d\n",
+            dt.year() % 100, dt.month(), dt.day(),
+            dt.hour(), dt.minute(), dt.second());
+          Serial2.print(buf);
+        }
+      }
+      break;
     case 'b':
       {
         char* p = command + 2;
