@@ -283,6 +283,8 @@ void setup() {
   Serial2.flush();
   Serial.println("XBEE up.");
 
+  pinMode(46,OUTPUT);
+  digitalWrite(46,LOW);
   delay(100);
 }
 
