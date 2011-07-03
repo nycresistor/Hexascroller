@@ -223,6 +223,8 @@ inline void rowOn(int row) {
   }
 }
 
+RTC_DS1307 RTC;
+
 void setup() {
   b.erase();
   b.flip();
@@ -260,7 +262,8 @@ void setup() {
 
   Serial.begin(9600);
   Serial.println("Okey-doke, here we go.");
-
+  Wire.begin();
+  RTC.begin();
   // Set up xbee
   Serial2.begin(9600);
   delay(1100);
@@ -271,6 +274,9 @@ void setup() {
   delay(90);
   Serial2.flush();
   Serial2.print("ATMY1\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATDH0\r");
   delay(90);
   Serial2.flush();
   Serial2.print("ATDL2\r");
@@ -379,15 +385,16 @@ void processCommand() {
       Serial2.print("MSG:");
       Serial2.println(message);
       break;
-    case 'B':
+    case 'D':
       {
         if (command[2] == 'r') {
           char buf[26];
-          DateTime dt = RTC_DS1307::now();
+          DateTime dt = RTC.now();
           sprintf(buf,"%02d/%02d/%02d %02d:%02d:%02d\n",
             dt.year() % 100, dt.month(), dt.day(),
             dt.hour(), dt.minute(), dt.second());
           Serial2.print(buf);
+          Serial.print(buf);
         }
       }
       break;
