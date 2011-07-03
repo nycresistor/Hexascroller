@@ -30,6 +30,7 @@ static int active_row = -1;
 #include <Wire.h>
 #include "RTClib.h"
 #include <EEPROM.h>
+#include <stdint.h>
 
 typedef enum {
   LEFT,
@@ -264,6 +265,12 @@ void setup() {
   Serial.println("Okey-doke, here we go.");
   Wire.begin();
   RTC.begin();
+   if (! RTC.isrunning()) {
+    Serial.println("RTC is NOT running!");
+    // following line sets the RTC to the date & time this sketch was compiled
+    RTC.adjust(DateTime(__DATE__, __TIME__));
+  }
+
   // Set up xbee
   Serial2.begin(9600);
   delay(1100);
@@ -367,8 +374,34 @@ int eatNote(char*& p) {
   }
   return base;
 }
-    
-void processCommand() {
+
+enum {
+  CODE_OK = 0,
+  CODE_ERROR = -1
+};
+
+int8_t response(const char* message, int8_t code) {
+  const static char* errMsg = "ERROR";
+  const static char* okMsg = "OK";
+  const char* prefix = (code == CODE_OK)?okMsg:errMsg;
+  Serial2.print(prefix);
+  if (message != NULL) {
+    Serial2.print(": ");
+    Serial2.print(message);
+  }
+  Serial2.print("\n");
+  return code;
+}
+
+int8_t fail(const char* message = NULL) {
+  return response(message, CODE_ERROR);
+}
+
+int8_t succeed(const char* message = NULL) {
+  return response(message, CODE_OK);
+}
+
+int8_t processCommand() {
   if (command[0] == '!') {
     // command processing
     switch (command[1]) {
@@ -378,13 +411,10 @@ void processCommand() {
 	EEPROM.write(DEFAULT_MSG_OFF-2+i,command[i]);
 	if (command[i] == '\0') break;
       }
-      Serial2.println("OK");
-      break;
+      return succeed(command+2);
     case 'S':
       // Get current scroller status
-      Serial2.print("MSG:");
-      Serial2.println(message);
-      break;
+      return succeed(message);
     case 'D':
       {
         if (command[2] == 'r') {
@@ -393,11 +423,31 @@ void processCommand() {
           sprintf(buf,"%02d/%02d/%02d %02d:%02d:%02d\n",
             dt.year() % 100, dt.month(), dt.day(),
             dt.hour(), dt.minute(), dt.second());
-          Serial2.print(buf);
-          Serial.print(buf);
+          return succeed(buf);
+        } else if (command[2] == 'w') {
+          char* p = command+3;
+          const char* errmsg = "Bad date format";
+          uint16_t year = 2000 + eatInt(p);
+          if (*p != '/') return fail(errmsg);
+          p++;
+          uint8_t month = eatInt(p);
+          if (*p != '/') return fail(errmsg);
+          p++;
+          uint8_t day = eatInt(p);
+          if (*p != ' ') return fail(errmsg);
+          p++;
+          uint8_t hour = eatInt(p);
+          if (*p != ':') return fail(errmsg);
+          p++;
+          uint8_t minute = eatInt(p);
+          if (*p != ':') return fail(errmsg);
+          p++;
+          uint8_t second = eatInt(p);
+          RTC.adjust(DateTime(year,month,day,hour,minute,second));
+          return succeed();
         }
       }
-      break;
+      return fail("Bad date command");
     case 'b':
       {
         char* p = command + 2;
@@ -412,9 +462,8 @@ void processCommand() {
         tuneNotes[1].length = period;
         tuneLength = 1;
         tuneIdx = 0;
-      }        
-      Serial2.println("OK");
-      break;
+        return succeed();
+      }
     case 't':
       {
 	char* p = command + 2;
@@ -436,23 +485,19 @@ void processCommand() {
 	}
 	tuneLength = tl;
 	tuneIdx = 0;
+        return succeed();
       }
     case 'd':
       switch (command[2]) {
       case 'l': dir = LEFT; break;
       case 'r': dir = RIGHT; break;
       // Up and down have been disabled
-      case 'u': //dir = UP; break;
-      case 'd': //dir = DOWN; break;
       case 'n': dir = NONE; break;
       default:
-	Serial2.println("Unrecognized direction");
-	return;
-	break;
+	return fail("Unrecognized direction");
       }
-      Serial2.println("OK");
-      break;
-    }	
+      return succeed();
+    }
   } else {
     // message
     message_timeout = MESSAGE_TICKS;
@@ -460,6 +505,7 @@ void processCommand() {
       message[i] = command[i];
       if (command[i] == '\0') break;
     }
+    return succeed();
   }
 }
 
@@ -532,12 +578,24 @@ ISR(TIMER3_COMPA_vect)
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
     PORTA = ~(p[i] | CLOCK_BITS);
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
     PORTA = ~(p[i] & ~CLOCK_BITS);
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
