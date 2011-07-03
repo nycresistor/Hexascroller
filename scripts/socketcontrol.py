@@ -61,11 +61,12 @@ while 1:
         #time.sleep(1)
         resp = mon.serialPort.read(1)
         n = mon.serialPort.inWaiting()
-        while n>0:
-            resp = resp + mon.serialPort.read(n)
-            if (resp.find("\n") == -1):
-                time.sleep(0.2)
+        timeout = 3.0
+        while timeout > 0.0 and resp.find("\n") == -1:
             n = mon.serialPort.inWaiting()
+            resp = resp + mon.serialPort.read(n)
+            time.sleep(0.2)
+            timeout = timeout - 0.2
         print "Response:", resp
         client.send("Response:")
         client.send(resp)
