@@ -41,7 +41,8 @@ typedef enum {
 } Direction;
 
 Direction dir = LEFT;
-int scroll_delay = 31;
+// Scroll delay is in complete display refreshes per frame.
+int scroll_delay = 6;
 
 #define OCTAVES 6
 #define NOTES_PER_OCTAVE 12
@@ -512,8 +513,25 @@ int8_t processCommand() {
 static int xoff = 0;
 static int yoff = 0;
 
+static int frames = 0;
 void loop() {
-  delay(scroll_delay);
+  while (frames < scroll_delay) {
+    int nextChar = Serial2.read();
+    while (nextChar != -1) {
+      if (nextChar == '\n') {
+        command[cmdIdx] = '\0';
+        processCommand();
+        cmdIdx = 0;
+        nextChar = -1;
+      } else {
+        command[cmdIdx] = nextChar;
+        cmdIdx++;
+        if (cmdIdx > CMD_SIZE) cmdIdx = CMD_SIZE;
+        nextChar = Serial2.read();
+      }
+    }
+  }
+  frames = 0;
   tune();
   b.erase();
   if (message_timeout == 0) {
@@ -548,20 +566,6 @@ void loop() {
   if (yoff >= 7) { yoff -= 7; }
 
   b.flip();
-  int nextChar = Serial2.read();
-  while (nextChar != -1) {
-    if (nextChar == '\n') {
-      command[cmdIdx] = '\0';
-      processCommand();
-      cmdIdx = 0;
-      nextChar = -1;
-    } else {
-      command[cmdIdx] = nextChar;
-      cmdIdx++;
-      if (cmdIdx > CMD_SIZE) cmdIdx = CMD_SIZE;
-      nextChar = Serial2.read();
-    }
-  }
 }
 
 #define CLOCK_BITS (1<<0 | 1<<4 | 1<<5)
@@ -604,5 +608,9 @@ ISR(TIMER3_COMPA_vect)
   }
   rowOn(curRow%7);
   curRow++;
+  if (curRow >= 7) {
+    curRow = 0;
+    frames++;
+  }
 }
 
