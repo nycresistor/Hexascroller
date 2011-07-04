@@ -580,28 +580,10 @@ ISR(TIMER3_COMPA_vect)
   for (int i = 0; i < columns; i++) {
     __asm__("nop\n\t");
     __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
     PORTA = ~(p[i] | CLOCK_BITS);
     __asm__("nop\n\t");
     __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
     PORTA = ~(p[i] & ~CLOCK_BITS);
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
-    __asm__("nop\n\t");
     __asm__("nop\n\t");
     __asm__("nop\n\t");
     PORTA = ~(p[i] | CLOCK_BITS);
