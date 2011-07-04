@@ -49,7 +49,7 @@ Mode mode = SCROLLING;
 Direction dir = LEFT;
 
 // Scroll delay is in complete display refreshes per frame.
-int scroll_delay = 6;
+int scroll_delay = 8;
 
 #define OCTAVES 6
 #define NOTES_PER_OCTAVE 12
@@ -292,7 +292,7 @@ void setup() {
   TCCR3A = 0b00000000;
   TCCR3B = 0b00001011;
   TIMSK3 = _BV(OCIE3A);
-  OCR3A = 300;
+  OCR3A = 200;
 
   Serial.begin(9600);
   Serial.println("Okey-doke, here we go.");
@@ -635,12 +635,9 @@ ISR(TIMER3_COMPA_vect)
   rowOff();
   for (int i = 0; i < columns; i++) {
     __asm__("nop\n\t");
-    __asm__("nop\n\t");
     PORTA = ~(p[i] | CLOCK_BITS);
     __asm__("nop\n\t");
-    __asm__("nop\n\t");
     PORTA = ~(p[i] & ~CLOCK_BITS);
-    __asm__("nop\n\t");
     __asm__("nop\n\t");
     PORTA = ~(p[i] | CLOCK_BITS);
   }
