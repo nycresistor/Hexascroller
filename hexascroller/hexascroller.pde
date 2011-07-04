@@ -40,7 +40,14 @@ typedef enum {
   NONE
 } Direction;
 
+typedef enum {
+  SCROLLING,
+  CLOCK
+} Mode;
+
+Mode mode = SCROLLING;
 Direction dir = LEFT;
+
 // Scroll delay is in complete display refreshes per frame.
 int scroll_delay = 6;
 
@@ -83,6 +90,31 @@ public:
       p++;
       x++;
     }
+  }
+
+  int charWidth(char c) {
+    if (c == ' ') return 2;
+    int coff = (int)c * 8;
+    uint8_t row = pgm_read_byte(charData+coff);
+    int width = 0;
+    if (row == 0) {
+      return 0;
+    }
+    while (row != 1) {
+      coff++;
+      width++;
+      row = pgm_read_byte(charData+coff);
+    }
+    return width;
+  }
+
+  int stringWidth(const char* s) {
+    int textLen = 0;
+    while (*s != '\0') {
+      textLen += charWidth(*s);
+      s++;
+    }
+    return textLen;
   }
 
   int writeChar(char c, int x, int y, bool wrap = true) {
@@ -488,6 +520,9 @@ int8_t processCommand() {
 	tuneIdx = 0;
         return succeed();
       }
+    case 'C':
+      mode = CLOCK;
+      return succeed();
     case 'd':
       switch (command[2]) {
       case 'l': dir = LEFT; break;
@@ -501,6 +536,7 @@ int8_t processCommand() {
     }
   } else {
     // message
+    mode = SCROLLING;
     message_timeout = MESSAGE_TICKS;
     for (int i = 0; i < CMD_SIZE+1; i++) {
       message[i] = command[i];
@@ -514,6 +550,19 @@ static int xoff = 0;
 static int yoff = 0;
 
 static int frames = 0;
+
+void doClock() {
+  char buf[26];
+  DateTime dt = RTC.now();
+  sprintf(buf,"%02d:%02d:%02d",
+	  dt.hour(), dt.minute(), dt.second());
+  const int halfcol = columns / 2;
+  int padding = 12;
+  for (int j = 0; j < 6; j++) {
+    b.writeStr(buf,padding+(j*halfcol),0);
+  }
+}
+
 void loop() {
   while (frames < scroll_delay) {
     int nextChar = Serial2.read();
@@ -534,37 +583,44 @@ void loop() {
   frames = 0;
   tune();
   b.erase();
-  if (message_timeout == 0) {
-    // read message from eeprom
-    uint8_t c = EEPROM.read(DEFAULT_MSG_OFF);
-    if (c == 0xff) {
-      // Fallback if none written
-      b.writeStr(GREETING,xoff,yoff);
-    } else {
-      int idx = 0;
-      while (idx < CMD_SIZE && c != '\0' && c != 0xff) {
-	message[idx++] = c;
-        c = EEPROM.read(DEFAULT_MSG_OFF+idx);
+  if (mode == SCROLLING) {
+    if (message_timeout == 0) {
+      mode = CLOCK;
+      doClock();
+      /*
+      // read message from eeprom
+      uint8_t c = EEPROM.read(DEFAULT_MSG_OFF);
+      if (c == 0xff) {
+	// Fallback if none written
+	b.writeStr(GREETING,xoff,yoff);
+      } else {
+	int idx = 0;
+	while (idx < CMD_SIZE && c != '\0' && c != 0xff) {
+	  message[idx++] = c;
+	  c = EEPROM.read(DEFAULT_MSG_OFF+idx);
+	}
+	message[idx] = '\0';
+	b.writeStr(message,xoff,yoff);
       }
-      message[idx] = '\0';
+      */
+    } else {
       b.writeStr(message,xoff,yoff);
+      message_timeout--;
     }
-  } else {
-    b.writeStr(message,xoff,yoff);
-    message_timeout--;
-  }
-  switch (dir) {
-  case LEFT: xoff--; break;
-  case RIGHT: xoff++; break;
-  case UP: yoff--; break;
-  case DOWN: yoff++; break;
-  }
+    switch (dir) {
+    case LEFT: xoff--; break;
+    case RIGHT: xoff++; break;
+    case UP: yoff--; break;
+    case DOWN: yoff++; break;
+    }
 
-  if (xoff < 0) { xoff += modules*columns; }
-  if (xoff >= modules*columns) { xoff -= modules*columns; }
-  if (yoff < 0) { yoff += 7; }
-  if (yoff >= 7) { yoff -= 7; }
-
+    if (xoff < 0) { xoff += modules*columns; }
+    if (xoff >= modules*columns) { xoff -= modules*columns; }
+    if (yoff < 0) { yoff += 7; }
+    if (yoff >= 7) { yoff -= 7; }
+  } else if (mode == CLOCK) {
+    doClock();
+  }
   b.flip();
 }
 
