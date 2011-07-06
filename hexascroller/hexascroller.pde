@@ -16,6 +16,8 @@
 
 // PIEZO: L3 (46) (T5A)
 
+#define RELAY_PIN 48
+
 //#define GREETING "Now with lowercase http://wiki.nycresistor.com/wiki/hexascroller"
 #define GREETING "!s command to set default message"
 
@@ -333,6 +335,10 @@ void setup() {
 
   pinMode(46,OUTPUT);
   digitalWrite(46,LOW);
+
+  pinMode(48,OUTPUT);
+  digitalWrite(48,HIGH);
+  
   delay(100);
 }
 
