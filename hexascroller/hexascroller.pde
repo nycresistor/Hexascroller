@@ -296,6 +296,11 @@ void setup() {
   TIMSK3 = _BV(OCIE3A);
   OCR3A = 200;
 
+  TCCR4A = 0b00000000;
+  TCCR4B = 0b00001101;
+  TIMSK4 = _BV(OCIE4A);
+  OCR3A = 200;
+
   Serial.begin(9600);
   Serial.println("Okey-doke, here we go.");
   Wire.begin();
@@ -653,5 +658,10 @@ ISR(TIMER3_COMPA_vect)
     curRow = 0;
     frames++;
   }
+}
+
+ISR(TIMER4_COMPA_vect)
+{
+  buzz();
 }
 
