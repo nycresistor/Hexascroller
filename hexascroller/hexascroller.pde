@@ -18,9 +18,10 @@
 
 #define RELAY_PIN 48
 
-//#define GREETING "Now with lowercase http://wiki.nycresistor.com/wiki/hexascroller"
 #define GREETING "!s command to set default message"
 
+// Each display module is a 120x7 grid. (Each module
+// consists of two chained 60x7 modules.)
 const static int columns = 120;
 const static int modules = 3;
 const static int rows = 7;
@@ -33,7 +34,12 @@ static int active_row = -1;
 #include "RTClib.h"
 #include <EEPROM.h>
 #include <stdint.h>
+#include "music.h"
+#include "parsing.h"
 
+// The direction of message scrolling.
+// UP and DOWN are currently deprecated
+// but may make a comeback someday.
 typedef enum {
   LEFT,
   RIGHT,
@@ -42,31 +48,17 @@ typedef enum {
   NONE
 } Direction;
 
+// The current mode of hexascroller.
 typedef enum {
-  SCROLLING,
-  CLOCK
+  SCROLLING, // Scrolling a message for display
+  CLOCK      // Display the current time
 } Mode;
 
 Mode mode = SCROLLING;
 Direction dir = LEFT;
 
-// Scroll delay is in complete display refreshes per frame.
+// The scroll delay is in complete display refreshes per frame.
 int scroll_delay = 8;
-
-#define OCTAVES 6
-#define NOTES_PER_OCTAVE 12
-// A A# B C C# D D# E F F# G G#
-// octaves: 6
-// notes per octave: 12
-int pitches[OCTAVES * NOTES_PER_OCTAVE] = {
-    // octave 0
-    55, 58, 62, 65, 69, 73, 78, 82, 87, 92, 98, 104,
-    110, 117, 123, 131, 139, 147, 156, 165, 175, 185, 196, 208,
-    220, 233, 246, 261, 277, 293, 311, 330, 349, 370, 392, 415,
-    440, 466, 493, 523, 554, 587, 622, 659, 698, 740, 784, 830,
-    880, 932, 988, 1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661,
-    1760, 1865, 1976, 2093, 2217, 2349, 2489, 2637, 2794, 2960, 3136, 3322
-};
 
 // Resources:
 // 256K program space
@@ -75,6 +67,13 @@ uint8_t b1[columns*modules];
 uint8_t b2[columns*modules];
 uint8_t rowbuf[columns];
 
+/**
+ * The Bitmap class describes the display as a
+ * (columns*modules) x rows grid of 1-bit pixels.
+ * It also contains a backing buffer and methods
+ * for packing a row for faster bit-banging to 
+ * the display modules.
+ */
 class Bitmap {
   uint8_t* data;
   uint8_t* dpl;
@@ -171,68 +170,6 @@ public:
   uint8_t* getDisplay() { return dpl; }
 };
 
-int buzz_len = 0;
-
-void buzz() {
-  if (buzz_len > 0) {
-    buzz_len--;
-    if (buzz_len == 0) {
-      TCCR5A = 0;
-      TCCR5B = 0;
-    }
-  }
-}
-
-#define MAX_TUNE_LEN 400
-
-struct Note {
-  int frequency; // -1 for silent/rest
-  unsigned int length; // in 32nd notes
-};
-Note tuneNotes[MAX_TUNE_LEN];
-int tuneLength = 0;
-int tuneIdx = 0;
-int noteTicks = 0;
-
-void tune() {
-  if (tuneLength <= tuneIdx) {
-    TCCR5A = 0;
-    TCCR5B = 0;
-    return;
-  } else {
-    if (noteTicks == 0) {
-	if (tuneNotes[tuneIdx].frequency == -1) {
-          // rest or end of tune
-          TCCR5A = 0;
-          TCCR5B = 0;
-        } else {
-          startBuzz(tuneNotes[tuneIdx].frequency);
-        }
-    }
-    noteTicks++;
-    if (noteTicks >= tuneNotes[tuneIdx].length) {
-      noteTicks = 0;
-      tuneIdx++;
-    }
-  }
-}
-	
-
-void startBuzz(int frequency) {
-  if (frequency <= 0) {
-    TCCR5A = 0;
-    TCCR5B = 0;
-  } else {
-    DDRL |= 1 << 3;
-    // mode 4, CTC, clock src = 1/8
-    TCCR5A = 0b01000000;
-    TCCR5B = 0b00001010;
-    // period = 1/freq 
-    int period = 2000000 / frequency;
-    OCR5A = period; // 3000; // ~500hz
-  }
-}
-
 static Bitmap b;
 
 inline void rowOff() {
@@ -296,11 +233,6 @@ void setup() {
   TIMSK3 = _BV(OCIE3A);
   OCR3A = 200;
 
-  TCCR4A = 0b00000000;
-  TCCR4B = 0b00001101;
-  TIMSK4 = _BV(OCIE4A);
-  OCR3A = 200;
-
   Serial.begin(9600);
   Serial.println("Okey-doke, here we go.");
   Wire.begin();
@@ -358,66 +290,6 @@ static int cmdIdx = 0;
 
 const static uint16_t DEFAULT_MSG_OFF = 0x10;
 
-int eatInt(char*& p) {
-  int v = 0;
-  while (*p >= '0' && *p <= '9') {
-    v *= 10;
-    v += *p - '0';
-    p++;
-  }
-  return v;
-}
-
-// a  a# b  c  c# d  d# e  f  f# g  g#
-// 0  1  2  3  4  5  6  7  8  9  10 11
-// -1 for rests
-int eatNote(char*& p) {
-  int base = 0;
-  switch(*p) {
-  case 'a':
-  case 'A':
-    base = 0;
-    break;
-  case 'b':
-  case 'B':
-    base = 2;
-    break;
-  case 'c':
-  case 'C':
-    base = 3;
-    break;
-  case 'd':
-  case 'D':
-    base = 5;
-    break;
-  case 'e':
-  case 'E':
-    base = 7;
-    break;
-  case 'f':
-  case 'F':
-    base = 8;
-    break;
-  case 'g':
-  case 'G':
-    base = 10;
-    break;
-  case 'r':
-  case 'R':
-    base = -1;
-    break;
-  default:
-    return 0;  
-  }
-  p++;
-  if (*p == '#') {
-    p++; base++;
-  }
-  if (*p == 'b') {
-    p++; base--;
-  }
-  return base;
-}
 
 enum {
   CODE_OK = 0,
@@ -471,22 +343,22 @@ int8_t processCommand() {
         } else if (command[2] == 'w') {
           char* p = command+3;
           const char* errmsg = "Bad date format";
-          uint16_t year = 2000 + eatInt(p);
+          uint16_t year = 2000 + parseInt(p);
           if (*p != '/') return fail(errmsg);
           p++;
-          uint8_t month = eatInt(p);
+          uint8_t month = parseInt(p);
           if (*p != '/') return fail(errmsg);
           p++;
-          uint8_t day = eatInt(p);
+          uint8_t day = parseInt(p);
           if (*p != ' ') return fail(errmsg);
           p++;
-          uint8_t hour = eatInt(p);
+          uint8_t hour = parseInt(p);
           if (*p != ':') return fail(errmsg);
           p++;
-          uint8_t minute = eatInt(p);
+          uint8_t minute = parseInt(p);
           if (*p != ':') return fail(errmsg);
           p++;
-          uint8_t second = eatInt(p);
+          uint8_t second = parseInt(p);
           RTC.adjust(DateTime(year,month,day,hour,minute,second));
           return succeed();
         }
@@ -495,40 +367,20 @@ int8_t processCommand() {
     case 'b':
       {
         char* p = command + 2;
-        int freq = eatInt(p);
+        int freq = parseInt(p);
         if (*p != '\0') {
           p++;
         }
-        int period = eatInt(p);
+        int period = parseInt(p);
         if (freq == 0) { freq = 500; }
         if (period == 0) { period = 5; }
-        tuneNotes[0].frequency = freq;
-        tuneNotes[1].length = period;
-        tuneLength = 1;
-        tuneIdx = 0;
+	buzz(freq,period);
         return succeed();
       }
     case 't':
       {
 	char* p = command + 2;
-	int tl = 0;
-	while (*p != '\0') {
-          int octave = *(p++) - '0'; //eatInt(p);
-	  int note = eatNote(p);
-          //if (note == -1) octave = 0;
-	  int len = eatInt(p);
-	  int ni = (octave * NOTES_PER_OCTAVE) + note;
-          if (ni <= 0) {
-            tuneNotes[tl].frequency = -1;
-          } else {
-            tuneNotes[tl].frequency = pitches[ni];
-          }
-          tuneNotes[tl].length = len;
-	  tl++;
-	  if (*p == ',') p++;
-	}
-	tuneLength = tl;
-	tuneIdx = 0;
+	playTune(p);
         return succeed();
       }
     case 'C':
@@ -578,7 +430,7 @@ void loop() {
   while (frames < scroll_delay) {
     int nextChar = Serial2.read();
     while (nextChar != -1) {
-      if (nextChar == '\n') {
+      if (nextChar == '\n' || nextChar == '\r' || nextChar == '\0') {
         command[cmdIdx] = '\0';
         processCommand();
         cmdIdx = 0;
@@ -586,7 +438,7 @@ void loop() {
       } else {
         command[cmdIdx] = nextChar;
         cmdIdx++;
-        if (cmdIdx > CMD_SIZE) cmdIdx = CMD_SIZE;
+        if (cmdIdx >= CMD_SIZE) cmdIdx = CMD_SIZE-1;
         nextChar = Serial2.read();
       }
     }
@@ -659,9 +511,3 @@ ISR(TIMER3_COMPA_vect)
     frames++;
   }
 }
-
-ISR(TIMER4_COMPA_vect)
-{
-  buzz();
-}
-
