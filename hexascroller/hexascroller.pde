@@ -392,7 +392,7 @@ int8_t processCommand() {
       }
     case 'C':
       mode = CLOCK;
-      return succeed("Clock mode");
+      return succeed();
     case 'd':
       switch (command[2]) {
       case 'l': dir = LEFT; break;
@@ -410,10 +410,10 @@ int8_t processCommand() {
     message_timeout = MESSAGE_TICKS;
     for (int i = 0; i < CMD_SIZE+1; i++) {
       message[i] = command[i];
-      //if (command[i] == '\n' || command[i] == '\r') { message[i] = '\0'; break; }
+      //if (command[i] == '\n' || command[i] == '\r') { message[i] = '\0';
       if (command[i] == '\0') break;
     }
-    return succeed(message);
+    return succeed();
   }
 }
 

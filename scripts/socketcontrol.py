@@ -41,6 +41,24 @@ class Monitor:
 mon = Monitor()
 mon.open("/dev/ttyUSB0")
 
+def sendToClient(client,data):
+    global mon
+    if data: 
+        client.send("Got: %s\n"%(data))
+        mon.serialPort.flushInput()
+        mon.serialPort.write(data + "\n")
+        resp = mon.serialPort.read(1)
+        n = mon.serialPort.inWaiting()
+        timeout = 3.0
+        while timeout > 0.0 and resp.find("\n") == -1:
+            n = mon.serialPort.inWaiting()
+            resp = resp + mon.serialPort.read(n)
+            time.sleep(0.2)
+            timeout = timeout - 0.2
+        client.send("Response:")
+        client.send(resp.strip())
+        client.send("\n") 
+
 host = '' 
 port = 666 
 backlog = 5 
@@ -52,26 +70,11 @@ while 1:
     client, address = s.accept()
     client.send("Write a message to be HEXASCROLLED:\n")
     data = client.recv(size) 
-    if data: 
-        #client.send(data)
-        print "Writing %s"%(data)
-        client.send("Got it: %s\n"%(data))
-        mon.serialPort.flushInput()
-        data = data.strip() + "\n"
-        mon.serialPort.write(data)
-        #time.sleep(1)
-        resp = mon.serialPort.read(1)
-        n = mon.serialPort.inWaiting()
-        timeout = 3.0
-        while timeout > 0.0 and resp.find("\n") == -1:
-            n = mon.serialPort.inWaiting()
-            resp = resp + mon.serialPort.read(n)
-            time.sleep(0.2)
-            timeout = timeout - 0.2
-        print "Response:", resp
-        client.send("Response:")
-        client.send(resp)
-        client.send("\n") 
+    data = data.strip()
+    sendToClient(data)
+    # flash lights if standard message
+    if data and data[0] != '!':
+        sendToClient("!A0");
     client.close()
 
 
