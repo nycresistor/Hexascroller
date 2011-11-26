@@ -71,8 +71,8 @@ while 1:
     client.send("Write a message to be HEXASCROLLED:\n")
     data = client.recv(size) 
     data = data.strip()
-    sendToClient(data,client)
+    sendToClient(client,data)
     # flash lights if standard message
     if data and data[0] != '!':
-        sendToClient("!A0",client);
+        sendToClient(client,"!A0");
     client.close()
