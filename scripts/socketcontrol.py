@@ -55,7 +55,7 @@ while 1:
     if data: 
         #client.send(data)
         print "Writing %s"%(data)
-        client.send("Got it\n")
+        client.send("Got it: %s\n"%(data))
         mon.serialPort.flushInput()
         mon.serialPort.write(data)
         #time.sleep(1)
