@@ -270,6 +270,9 @@ void setup() {
   Serial2.flush();
   Serial.println("XBEE up.");
 
+  // Set up accessory port
+  Serial3.begin(9600);
+
   pinMode(46,OUTPUT);
   digitalWrite(46,LOW);
 
@@ -331,6 +334,10 @@ int8_t processCommand() {
     case 'S':
       // Get current scroller status
       return succeed(message);
+    case 'A':
+      // Send message to accessory serial port
+      Serial3.println(command+2);
+      return succeed(command+2);
     case 'D':
       {
         if (command[2] == 'r') {
