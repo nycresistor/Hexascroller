@@ -403,6 +403,8 @@ int8_t processCommand() {
 	return fail("Unrecognized direction");
       }
       return succeed();
+    default:
+      return fail("RTFM, known command letters are SsADbtC and dl|dr")
     }
   } else {
     // message
