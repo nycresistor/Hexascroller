@@ -16,6 +16,13 @@
 
 // PIEZO: L3 (46) (T5A)
 
+// Relay: 48
+
+// CONFIGURATION:
+// Undefine to use XBee for communications
+// #define USE_XBEE
+#define COMM_PORT Serial
+
 #define RELAY_PIN 48
 
 #define GREETING "!s command to set default message"
@@ -198,6 +205,34 @@ inline void rowOn(int row) {
 
 RTC_DS1307 RTC;
 
+void initXbee() {
+    // Set up xbee
+  Serial2.begin(9600);
+  delay(1100);
+  Serial2.print("+++");
+  delay(1100);
+  Serial2.flush();
+  Serial2.print("ATPL2\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATMY1\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATDH0\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATDL2\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATSM0\r");
+  delay(90);
+  Serial2.flush();
+  Serial2.print("ATCN\r");
+  delay(1100);
+
+  Serial2.flush();
+}
+
 void setup() {
   b.erase();
   b.flip();
@@ -234,7 +269,6 @@ void setup() {
   OCR3A = 200;
 
   Serial.begin(9600);
-  Serial.println("Okey-doke, here we go.");
   Wire.begin();
   RTC.begin();
    if (! RTC.isrunning()) {
@@ -243,32 +277,9 @@ void setup() {
     RTC.adjust(DateTime(__DATE__, __TIME__));
   }
 
-  // Set up xbee
-  Serial2.begin(9600);
-  delay(1100);
-  Serial2.print("+++");
-  delay(1100);
-  Serial2.flush();
-  Serial2.print("ATPL2\r");
-  delay(90);
-  Serial2.flush();
-  Serial2.print("ATMY1\r");
-  delay(90);
-  Serial2.flush();
-  Serial2.print("ATDH0\r");
-  delay(90);
-  Serial2.flush();
-  Serial2.print("ATDL2\r");
-  delay(90);
-  Serial2.flush();
-  Serial2.print("ATSM0\r");
-  delay(90);
-  Serial2.flush();
-  Serial2.print("ATCN\r");
-  delay(1100);
-
-  Serial2.flush();
-  Serial.println("XBEE up.");
+#ifdef USE_XBEE
+  initXbee();
+#endif
 
   // Set up accessory port
   Serial3.begin(9600);
@@ -303,7 +314,7 @@ int8_t response(const char* message, int8_t code) {
   const static char* errMsg = "ERROR";
   const static char* okMsg = "OK";
   const char* prefix = (code == CODE_OK)?okMsg:errMsg;
-  Serial2.print(prefix);
+  COMM_PORT.print(prefix);
   if (message != NULL) {
     Serial2.print(": ");
     Serial2.print(message);
@@ -404,7 +415,7 @@ int8_t processCommand() {
       }
       return succeed();
     default:
-      return fail("RTFM, known command letters are SsADbtC and dl|dr")
+      return fail("RTFM, known command letters are SsADbtC and dl|dr");
     }
   } else {
     // message
