@@ -22,7 +22,7 @@
 // Undefine to use XBee for communications
 // #define USE_XBEE
 #define COMM_PORT Serial
-
+#define USE_ECHO
 #define RELAY_PIN 48
 
 #define GREETING "!s command to set default message"
@@ -316,10 +316,10 @@ int8_t response(const char* message, int8_t code) {
   const char* prefix = (code == CODE_OK)?okMsg:errMsg;
   COMM_PORT.print(prefix);
   if (message != NULL) {
-    Serial2.print(": ");
-    Serial2.print(message);
+    COMM_PORT.print(": ");
+    COMM_PORT.print(message);
   }
-  Serial2.print("\n");
+  COMM_PORT.print("\n");
   return code;
 }
 
@@ -449,7 +449,10 @@ void doClock() {
 
 void loop() {
   while (frames < scroll_delay) {
-    int nextChar = Serial2.read();
+    int nextChar = COMM_PORT.read();
+    #ifdef USE_ECHO
+    if (nextChar > -1) COMM_PORT.write(nextChar);
+    #endif
     while (nextChar != -1) {
       if (nextChar == '\n' || nextChar == '\r' || nextChar == '\0') {
         command[cmdIdx] = '\0';
@@ -460,7 +463,10 @@ void loop() {
         command[cmdIdx] = nextChar;
         cmdIdx++;
         if (cmdIdx >= CMD_SIZE) cmdIdx = CMD_SIZE-1;
-        nextChar = Serial2.read();
+        nextChar = COMM_PORT.read();
+        #ifdef USE_ECHO
+        if (nextChar > -1) COMM_PORT.write(nextChar);
+        #endif
       }
     }
   }
@@ -471,22 +477,6 @@ void loop() {
     if (message_timeout == 0) {
       mode = CLOCK;
       doClock();
-      /*
-      // read message from eeprom
-      uint8_t c = EEPROM.read(DEFAULT_MSG_OFF);
-      if (c == 0xff) {
-	// Fallback if none written
-	b.writeStr(GREETING,xoff,yoff);
-      } else {
-	int idx = 0;
-	while (idx < CMD_SIZE && c != '\0' && c != 0xff) {
-	  message[idx++] = c;
-	  c = EEPROM.read(DEFAULT_MSG_OFF+idx);
-	}
-	message[idx] = '\0';
-	b.writeStr(message,xoff,yoff);
-      }
-      */
     } else {
       b.writeStr(message,xoff,yoff);
       message_timeout--;
