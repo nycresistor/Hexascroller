@@ -1,18 +1,20 @@
+//
+// New configuration for Teensy 2.0
+//
 
-// CLOCK PIN: A0 (22)
-// DATA 1: A1 (23)
-// DATA 2: A2 (24)
-// DATA 3: A3 (25)
-// CLOCK PIN: A4 (26)
-// CLOCK PIN: A5 (27)
+//
+// CLOCK PIN: F4 (19)
+// DATA 1: F5 (18)
+// DATA 2: F6 (17)
+// DATA 3: F7 (16)
 
-// ROW 0: E4 (2)
-// ROW 1: E5 (3)
-// ROW 2: E3 (5)
-// ROW 3: H3 (6)
-// ROW 4: H4 (7)
-// ROW 5: H5 (8)
-// ROW 6: H6 (9)
+// ROW 0: B0 (2)
+// ROW 1: B1 (3)
+// ROW 2: B2 (5)
+// ROW 3: B3 (6)
+// ROW 4: B4 (7)
+// ROW 5: B5 (8)
+// ROW 6: B6 (9)
 
 // PIEZO: L3 (46) (T5A)
 
@@ -21,7 +23,9 @@
 // CONFIGURATION:
 // Undefine to use XBee for communications
 // #define USE_XBEE
+// #define XBEE_PORT Serial2
 #define COMM_PORT Serial
+#define ACC_PORT Serial1
 #define USE_ECHO
 #define RELAY_PIN 48
 
@@ -162,13 +166,13 @@ public:
     for (int i = 0; i < columns; i++) {
       rowbuf[i] = 0;
       if ( (p[i] & mask) != 0 ) {
-        rowbuf[i] |= 1<<1;
+        rowbuf[i] |= 1<<5;
       }
       if ( (p[i+columns] & mask) != 0 ) {
-        rowbuf[i] |= 1<<2;
+        rowbuf[i] |= 1<<6;
       }
       if ( (p[i+(2*columns)] & mask) != 0 ) {
-        rowbuf[i] |= 1<<3;
+        rowbuf[i] |= 1<<7;
       }
     }
     return rowbuf;
@@ -180,81 +184,72 @@ public:
 static Bitmap b;
 
 inline void rowOff() {
-  PORTE &= ~(_BV(4) | _BV(5) | _BV(3));
-  PORTH &= ~(_BV(3) | _BV(4) | _BV(5) | _BV(6));
+  PORTB &= 0x80;
 }
 
 inline void rowOn(int row) {
-  // ROW 0: E4 (2)
-  // ROW 1: E5 (3)
-  // ROW 2: E3 (5)
-  // ROW 3: H3 (6)
-  // ROW 4: H4 (7)
-  // ROW 5: H5 (8)
-  // ROW 6: H6 (9)
-  switch( row ) {
-    case 6: PORTE |= _BV(4); break;
-    case 5: PORTE |= _BV(5); break;
-    case 4: PORTE |= _BV(3); break;
-    case 3: PORTH |= _BV(3); break;
-    case 2: PORTH |= _BV(4); break;
-    case 1: PORTH |= _BV(5); break;
-    case 0: PORTH |= _BV(6); break;
-  }
+  // ROW 0: B0 (2)
+  // ROW 1: B1 (3)
+  // ROW 2: B2 (5)
+  // ROW 3: B3 (6)
+  // ROW 4: B4 (7)
+  // ROW 5: B5 (8)
+  // ROW 6: B6 (9)
+  PORTB |= 1 << row;
 }
 
 RTC_DS1307 RTC;
 
+#ifdef USE_XBEE
 void initXbee() {
     // Set up xbee
-  Serial2.begin(9600);
+  XBEE_PORT.begin(9600);
   delay(1100);
-  Serial2.print("+++");
+  XBEE_PORT.print("+++");
   delay(1100);
-  Serial2.flush();
-  Serial2.print("ATPL2\r");
+  XBEE_PORT.flush();
+  XBEE_PORT.print("ATPL2\r");
   delay(90);
-  Serial2.flush();
-  Serial2.print("ATMY1\r");
+  XBEE_PORT.flush();
+  XBEE_PORT.print("ATMY1\r");
   delay(90);
-  Serial2.flush();
-  Serial2.print("ATDH0\r");
+  XBEE_PORT.flush();
+  XBEE_PORT.print("ATDH0\r");
   delay(90);
-  Serial2.flush();
-  Serial2.print("ATDL2\r");
+  XBEE_PORT.flush();
+  XBEE_PORT.print("ATDL2\r");
   delay(90);
-  Serial2.flush();
-  Serial2.print("ATSM0\r");
+  XBEE_PORT.flush();
+  XBEE_PORT.print("ATSM0\r");
   delay(90);
-  Serial2.flush();
-  Serial2.print("ATCN\r");
+  XBEE_PORT.flush();
+  XBEE_PORT.print("ATCN\r");
   delay(1100);
 
-  Serial2.flush();
+  XBEE_PORT.flush();
 }
+#endif 
 
 void setup() {
   b.erase();
   b.flip();
   b.erase();
   //b.flip();
-  // CLOCK PIN: A0
-  // DATA 1: A1
-  // DATA 2: A2
-  // DATA 3: A3
-  DDRA = 0x3f;
-  PORTA = 0x3f;
-// ROW 0: E4 (2)
-// ROW 1: E5 (4)
-// ROW 2: E3 (5)
-// ROW 3: H3 (6)
-// ROW 4: H4 (7)
-// ROW 5: H5 (8)
-// ROW 6: H6 (9)
-  DDRE |= _BV(4) | _BV(5) | _BV(3);
-  DDRH |= _BV(3) | _BV(4) | _BV(5) | _BV(6);
-  PORTE &= ~(_BV(4) | _BV(5) | _BV(3));
-  PORTH &= ~(_BV(3) | _BV(4) | _BV(5) | _BV(6));
+  // CLOCK PIN: F4
+  // DATA 1: F5
+  // DATA 2: F6
+  // DATA 3: F7
+  DDRA |= 0xf0;
+  PORTA |= 0xf0;
+  // ROW 0: B0 (2)
+  // ROW 1: B1 (3)
+  // ROW 2: B2 (5)
+  // ROW 3: B3 (6)
+  // ROW 4: B4 (7)
+  // ROW 5: B5 (8)
+  // ROW 6: B6 (9)
+  DDRB |= 0x7f;
+  DDRB &= 0x80;
   // 2ms per row/interrupt
   // clock: 16MHz
   // target: 500Hz
@@ -268,11 +263,11 @@ void setup() {
   TIMSK3 = _BV(OCIE3A);
   OCR3A = 200;
 
-  Serial.begin(9600);
+  COMM_PORT.begin(9600);
   Wire.begin();
   RTC.begin();
    if (! RTC.isrunning()) {
-    Serial.println("RTC is NOT running!");
+    COMM_PORT.println("RTC is NOT running!");
     // following line sets the RTC to the date & time this sketch was compiled
     RTC.adjust(DateTime(__DATE__, __TIME__));
   }
@@ -282,7 +277,7 @@ void setup() {
 #endif
 
   // Set up accessory port
-  Serial3.begin(9600);
+  ACC_PORT.begin(9600);
 
   pinMode(46,OUTPUT);
   digitalWrite(46,LOW);
@@ -347,7 +342,7 @@ int8_t processCommand() {
       return succeed(message);
     case 'A':
       // Send message to accessory serial port
-      Serial3.println(command+2);
+      ACC_PORT.println(command+2);
       return succeed(command+2);
     case 'D':
       {
@@ -498,7 +493,7 @@ void loop() {
   b.flip();
 }
 
-#define CLOCK_BITS (1<<0 | 1<<4 | 1<<5)
+#define CLOCK_BITS (1<<4)
 
 ISR(TIMER3_COMPA_vect)
 {
@@ -509,11 +504,11 @@ ISR(TIMER3_COMPA_vect)
   rowOff();
   for (int i = 0; i < columns; i++) {
     __asm__("nop\n\t");
-    PORTA = ~(p[i] | CLOCK_BITS);
+    PORTF = ~(p[i] | CLOCK_BITS);
     __asm__("nop\n\t");
-    PORTA = ~(p[i] & ~CLOCK_BITS);
+    PORTF = ~(p[i] & ~CLOCK_BITS);
     __asm__("nop\n\t");
-    PORTA = ~(p[i] | CLOCK_BITS);
+    PORTF = ~(p[i] | CLOCK_BITS);
   }
   rowOn(curRow%7);
   curRow++;
