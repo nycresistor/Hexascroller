@@ -239,8 +239,8 @@ void setup() {
   // DATA 1: F5
   // DATA 2: F6
   // DATA 3: F7
-  DDRA |= 0xf0;
-  PORTA |= 0xf0;
+  DDRF |= 0xf0;
+  PORTF |= 0xf0;
   // ROW 0: B0 (2)
   // ROW 1: B1 (3)
   // ROW 2: B2 (5)
@@ -380,21 +380,24 @@ int8_t processCommand() {
     case 'b':
       {
         char* p = command + 2;
-        int freq = parseInt(p);
-        if (*p != '\0') {
-          p++;
-        }
-        int period = parseInt(p);
-        if (freq == 0) { freq = 500; }
-        if (period == 0) { period = 5; }
-	buzz(freq,period);
-        return succeed();
+        //int freq = parseInt(p);
+        //if (*p != '\0') {
+        //  p++;
+        //}
+        //int period = parseInt(p);
+        //if (freq == 0) { freq = 500; }
+        //if (period == 0) { period = 5; }
+	//buzz(freq,period);
+        //return succeed();
+        return fail("Buzz is no longer supported");
       }
     case 't':
       {
 	char* p = command + 2;
-	playTune(p);
-        return succeed();
+        // No music on teensy version
+	// playTune(p);
+        // return succeed();
+        return fail("Music is no longer supported");
       }
     case 'C':
       mode = CLOCK;
@@ -466,7 +469,8 @@ void loop() {
     }
   }
   frames = 0;
-  tune();
+  // No music on teensy version
+  //tune();
   b.erase();
   if (mode == SCROLLING) {
     if (message_timeout == 0) {
