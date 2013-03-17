@@ -1,12 +1,8 @@
-//
-// New configuration for Teensy 2.0
-//
+// New configuration for Teensy 2.0/panel
 
 //
-// CLOCK PIN: F4 (19)
-// DATA 1: F5 (18)
-// DATA 2: F6 (17)
-// DATA 3: F7 (16)
+// CLOCK PIN: D0 (5/SCL)
+// DATA PIN: D1 (6/SDA)
 
 // ROW 0: B0 (2)
 // ROW 1: B1 (3)
@@ -25,7 +21,6 @@
 // #define USE_XBEE
 // #define XBEE_PORT Serial2
 #define COMM_PORT Serial
-#define ACC_PORT Serial1
 #define USE_ECHO
 #define RELAY_PIN 48
 
@@ -34,19 +29,14 @@
 // Each display module is a 120x7 grid. (Each module
 // consists of two chained 60x7 modules.)
 const static int columns = 120;
-const static int modules = 3;
 const static int rows = 7;
 
 static int active_row = -1;
 
 #include <avr/pgmspace.h>
 #include "hfont.h"
-#include <Wire.h>
-#include "RTClib.h"
 #include <EEPROM.h>
 #include <stdint.h>
-#include "music.h"
-#include "parsing.h"
 
 // The direction of message scrolling.
 // UP and DOWN are currently deprecated
@@ -59,13 +49,6 @@ typedef enum {
   NONE
 } Direction;
 
-// The current mode of hexascroller.
-typedef enum {
-  SCROLLING, // Scrolling a message for display
-  CLOCK      // Display the current time
-} Mode;
-
-Mode mode = SCROLLING;
 Direction dir = LEFT;
 
 // The scroll delay is in complete display refreshes per frame.
@@ -74,13 +57,13 @@ int scroll_delay = 8;
 // Resources:
 // 256K program space
 // 8K RAM
-uint8_t b1[columns*modules];
-uint8_t b2[columns*modules];
+uint8_t b1[columns];
+uint8_t b2[columns];
 uint8_t rowbuf[columns];
 
 /**
  * The Bitmap class describes the display as a
- * (columns*modules) x rows grid of 1-bit pixels.
+ * columns x rows grid of 1-bit pixels.
  * It also contains a backing buffer and methods
  * for packing a row for faster bit-banging to 
  * the display modules.
@@ -94,7 +77,7 @@ public:
     dpl = b2;
   }
   void erase() {
-    for (int i = 0; i < columns*modules; i++) data[i] = 0;
+    for (int i = 0; i < columns; i++) data[i] = 0;
   }
   void writeStr(char* p, int x, int y) {
     while (*p != '\0') {
@@ -140,10 +123,10 @@ public:
     while (row != 1) {
       row = row >> y;
       if (wrap) {
-        x = x % (columns*modules);
-        if (x < 0) { x = x + columns*modules; }
+        x = x % (columns);
+        if (x < 0) { x = x + columns; }
       }
-      if (x >= 0 && x < columns*modules) {
+      if (x >= 0 && x < columns) {
         data[x] = row | (data[x] & mask);
       }
       coff++;
@@ -166,13 +149,7 @@ public:
     for (int i = 0; i < columns; i++) {
       rowbuf[i] = 0;
       if ( (p[i] & mask) != 0 ) {
-        rowbuf[i] |= 1<<5;
-      }
-      if ( (p[i+columns] & mask) != 0 ) {
-        rowbuf[i] |= 1<<6;
-      }
-      if ( (p[i+(2*columns)] & mask) != 0 ) {
-        rowbuf[i] |= 1<<7;
+        rowbuf[i] |= 1<<1;
       }
     }
     return rowbuf;
@@ -188,68 +165,17 @@ inline void rowOff() {
 }
 
 inline void rowOn(int row) {
-  // ROW 0: B0 (2)
-  // ROW 1: B1 (3)
-  // ROW 2: B2 (5)
-  // ROW 3: B3 (6)
-  // ROW 4: B4 (7)
-  // ROW 5: B5 (8)
-  // ROW 6: B6 (9)
   PORTB |= 1 << row;
 }
-
-RTC_DS1307 RTC;
-
-#ifdef USE_XBEE
-void initXbee() {
-    // Set up xbee
-  XBEE_PORT.begin(9600);
-  delay(1100);
-  XBEE_PORT.print("+++");
-  delay(1100);
-  XBEE_PORT.flush();
-  XBEE_PORT.print("ATPL2\r");
-  delay(90);
-  XBEE_PORT.flush();
-  XBEE_PORT.print("ATMY1\r");
-  delay(90);
-  XBEE_PORT.flush();
-  XBEE_PORT.print("ATDH0\r");
-  delay(90);
-  XBEE_PORT.flush();
-  XBEE_PORT.print("ATDL2\r");
-  delay(90);
-  XBEE_PORT.flush();
-  XBEE_PORT.print("ATSM0\r");
-  delay(90);
-  XBEE_PORT.flush();
-  XBEE_PORT.print("ATCN\r");
-  delay(1100);
-
-  XBEE_PORT.flush();
-}
-#endif 
 
 void setup() {
   b.erase();
   b.flip();
   b.erase();
-  //b.flip();
-  // CLOCK PIN: F4
-  // DATA 1: F5
-  // DATA 2: F6
-  // DATA 3: F7
-  DDRF |= 0xf0;
-  PORTF |= 0xf0;
-  // ROW 0: B0 (2)
-  // ROW 1: B1 (3)
-  // ROW 2: B2 (5)
-  // ROW 3: B3 (6)
-  // ROW 4: B4 (7)
-  // ROW 5: B5 (8)
-  // ROW 6: B6 (9)
+  DDRD |= 0x03;
+  PORTD |= 0x03;
   DDRB |= 0x7f;
-  DDRB &= 0x80;
+  PORTB &= 0x80;
   // 2ms per row/interrupt
   // clock: 16MHz
   // target: 500Hz
@@ -264,34 +190,20 @@ void setup() {
   OCR3A = 200;
 
   COMM_PORT.begin(9600);
-  Wire.begin();
-  RTC.begin();
-   if (! RTC.isrunning()) {
-    COMM_PORT.println("RTC is NOT running!");
-    // following line sets the RTC to the date & time this sketch was compiled
-    RTC.adjust(DateTime(__DATE__, __TIME__));
-  }
 
-#ifdef USE_XBEE
-  initXbee();
-#endif
+  //pinMode(46,OUTPUT);
+  //digitalWrite(46,LOW);
 
-  // Set up accessory port
-  ACC_PORT.begin(9600);
-
-  pinMode(46,OUTPUT);
-  digitalWrite(46,LOW);
-
-  pinMode(48,OUTPUT);
-  digitalWrite(48,HIGH);
+  //pinMode(48,OUTPUT);
+  //digitalWrite(48,HIGH);
   
   delay(100);
 }
 
 static unsigned int curRow = 0;
 
-#define CMD_SIZE 1024
-#define MESSAGE_TICKS (modules*columns*20)
+#define CMD_SIZE 100
+#define MESSAGE_TICKS (columns*20)
 static int message_timeout = 0;
 static char message[CMD_SIZE+1];
 static char command[CMD_SIZE+1];
@@ -342,65 +254,14 @@ int8_t processCommand() {
       return succeed(message);
     case 'A':
       // Send message to accessory serial port
-      ACC_PORT.println(command+2);
-      return succeed(command+2);
+      return fail("No more accessory port");
     case 'D':
-      {
-        if (command[2] == 'r') {
-          char buf[26];
-          DateTime dt = RTC.now();
-          sprintf(buf,"%02d/%02d/%02d %02d:%02d:%02d\n",
-            dt.year() % 100, dt.month(), dt.day(),
-            dt.hour(), dt.minute(), dt.second());
-          return succeed(buf);
-        } else if (command[2] == 'w') {
-          char* p = command+3;
-          const char* errmsg = "Bad date format";
-          uint16_t year = 2000 + parseInt(p);
-          if (*p != '/') return fail(errmsg);
-          p++;
-          uint8_t month = parseInt(p);
-          if (*p != '/') return fail(errmsg);
-          p++;
-          uint8_t day = parseInt(p);
-          if (*p != ' ') return fail(errmsg);
-          p++;
-          uint8_t hour = parseInt(p);
-          if (*p != ':') return fail(errmsg);
-          p++;
-          uint8_t minute = parseInt(p);
-          if (*p != ':') return fail(errmsg);
-          p++;
-          uint8_t second = parseInt(p);
-          RTC.adjust(DateTime(year,month,day,hour,minute,second));
-          return succeed();
-        }
-      }
-      return fail("Bad date command");
+      return fail("No more date commands");
     case 'b':
-      {
-        char* p = command + 2;
-        //int freq = parseInt(p);
-        //if (*p != '\0') {
-        //  p++;
-        //}
-        //int period = parseInt(p);
-        //if (freq == 0) { freq = 500; }
-        //if (period == 0) { period = 5; }
-	//buzz(freq,period);
-        //return succeed();
-        return fail("Buzz is no longer supported");
-      }
+      return fail("Buzz is no longer supported");
     case 't':
-      {
-	char* p = command + 2;
-        // No music on teensy version
-	// playTune(p);
-        // return succeed();
-        return fail("Music is no longer supported");
-      }
+      return fail("Music is no longer supported");
     case 'C':
-      mode = CLOCK;
       return succeed();
     case 'd':
       switch (command[2]) {
@@ -417,7 +278,6 @@ int8_t processCommand() {
     }
   } else {
     // message
-    mode = SCROLLING;
     message_timeout = MESSAGE_TICKS;
     for (int i = 0; i < CMD_SIZE+1; i++) {
       message[i] = command[i];
@@ -432,18 +292,6 @@ static int xoff = 0;
 static int yoff = 0;
 
 static int frames = 0;
-
-void doClock() {
-  char buf[26];
-  DateTime dt = RTC.now();
-  sprintf(buf,"%02d:%02d:%02d",
-	  dt.hour(), dt.minute(), dt.second());
-  const int halfcol = columns / 2;
-  int padding = 12;
-  for (int j = 0; j < 6; j++) {
-    b.writeStr(buf,padding+(j*halfcol),0);
-  }
-}
 
 void loop() {
   while (frames < scroll_delay) {
@@ -472,14 +320,8 @@ void loop() {
   // No music on teensy version
   //tune();
   b.erase();
-  if (mode == SCROLLING) {
-    if (message_timeout == 0) {
-      mode = CLOCK;
-      doClock();
-    } else {
-      b.writeStr(message,xoff,yoff);
-      message_timeout--;
-    }
+  b.writeStr("hello hello hello 10010 hello hello",0,0);
+  /*
     switch (dir) {
     case LEFT: xoff--; break;
     case RIGHT: xoff++; break;
@@ -487,17 +329,15 @@ void loop() {
     case DOWN: yoff++; break;
     }
 
-    if (xoff < 0) { xoff += modules*columns; }
-    if (xoff >= modules*columns) { xoff -= modules*columns; }
+    if (xoff < 0) { xoff += columns; }
+    if (xoff >= columns) { xoff -= columns; }
     if (yoff < 0) { yoff += 7; }
     if (yoff >= 7) { yoff -= 7; }
-  } else if (mode == CLOCK) {
-    doClock();
-  }
+    */
   b.flip();
 }
 
-#define CLOCK_BITS (1<<4)
+#define CLOCK_BITS 1
 
 ISR(TIMER3_COMPA_vect)
 {
@@ -508,11 +348,14 @@ ISR(TIMER3_COMPA_vect)
   rowOff();
   for (int i = 0; i < columns; i++) {
     __asm__("nop\n\t");
-    PORTF = ~(p[i] | CLOCK_BITS);
+    PORTD = p[i] | CLOCK_BITS;
+    //PORTD = 0x01;
     __asm__("nop\n\t");
-    PORTF = ~(p[i] & ~CLOCK_BITS);
+    //PORTD = 0x0;
+    PORTD = p[i] & ~CLOCK_BITS;
     __asm__("nop\n\t");
-    PORTF = ~(p[i] | CLOCK_BITS);
+    //PORTD = 0x01;
+    PORTD = p[i] | CLOCK_BITS;
   }
   rowOn(curRow%7);
   curRow++;
