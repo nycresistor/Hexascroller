@@ -1,30 +1,21 @@
-// New configuration for Teensy 2.0/panel
+// The new hexascroller code only handles a single 7x120
+// panel.
 
-//
+// Pin assignments:
+
 // CLOCK PIN: D0 (5/SCL)
 // DATA PIN: D1 (6/SDA)
 
-// ROW 0: B0 (2)
-// ROW 1: B1 (3)
-// ROW 2: B2 (5)
-// ROW 3: B3 (6)
-// ROW 4: B4 (7)
-// ROW 5: B5 (8)
-// ROW 6: B6 (9)
+// ROW 0: B0 (0)
+// ROW 1: B1 (1)
+// ROW 2: B2 (2)
+// ROW 3: B3 (3)
+// ROW 4: B4 (13)
+// ROW 5: B5 (14)
+// ROW 6: B6 (15)
 
-// PIEZO: L3 (46) (T5A)
-
-// Relay: 48
-
-// CONFIGURATION:
-// Undefine to use XBee for communications
-// #define USE_XBEE
-// #define XBEE_PORT Serial2
 #define COMM_PORT Serial
 #define USE_ECHO
-#define RELAY_PIN 48
-
-#define GREETING "!s command to set default message"
 
 // Each display module is a 120x7 grid. (Each module
 // consists of two chained 60x7 modules.)
@@ -35,31 +26,14 @@ static int active_row = -1;
 
 #include <avr/pgmspace.h>
 #include "hfont.h"
-#include <EEPROM.h>
 #include <stdint.h>
 
-// The direction of message scrolling.
-// UP and DOWN are currently deprecated
-// but may make a comeback someday.
-typedef enum {
-  LEFT,
-  RIGHT,
-  UP,
-  DOWN,
-  NONE
-} Direction;
-
-Direction dir = LEFT;
-
-// The scroll delay is in complete display refreshes per frame.
-int scroll_delay = 8;
-
 // Resources:
-// 256K program space
-// 8K RAM
+// 2.5K RAM
+
 uint8_t b1[columns];
 uint8_t b2[columns];
-uint8_t rowbuf[columns];
+uint8_t rowbuf[columns/8];
 
 /**
  * The Bitmap class describes the display as a
@@ -146,11 +120,13 @@ public:
   uint8_t* buildRowBuf(int row) {
     uint8_t* p = getDisplay();
     uint8_t mask = 1 << (7-row);
-    for (int i = 0; i < columns; i++) {
+    for (int i = 0; i < columns/8; i++) {
       rowbuf[i] = 0;
-      if ( (p[i] & mask) != 0 ) {
-        rowbuf[i] |= 1<<1;
-      }
+      for (int j = 0; j < 8; j++) {
+        if ( (p[(i*8)+j] & mask) != 0 ) {
+          rowbuf[i] |= 1<<j;
+        }
+      } 
     }
     return rowbuf;
   }
@@ -245,7 +221,6 @@ int8_t processCommand() {
     case 's':
       // Set default string
       for (int i = 2; i < CMD_SIZE+1; i++) {
-	EEPROM.write(DEFAULT_MSG_OFF-2+i,command[i]);
 	if (command[i] == '\0') break;
       }
       return succeed(command+2);
@@ -317,23 +292,8 @@ void loop() {
     }
   }
   frames = 0;
-  // No music on teensy version
-  //tune();
   b.erase();
   b.writeStr("hello hello hello 10010 hello hello",0,0);
-  /*
-    switch (dir) {
-    case LEFT: xoff--; break;
-    case RIGHT: xoff++; break;
-    case UP: yoff--; break;
-    case DOWN: yoff++; break;
-    }
-
-    if (xoff < 0) { xoff += columns; }
-    if (xoff >= columns) { xoff -= columns; }
-    if (yoff < 0) { yoff += 7; }
-    if (yoff >= 7) { yoff -= 7; }
-    */
   b.flip();
 }
 
@@ -346,16 +306,15 @@ ISR(TIMER3_COMPA_vect)
   //uint8_t* p = b.getDisplay();
   uint8_t* p = b.buildRowBuf(row);
   rowOff();
-  for (int i = 0; i < columns; i++) {
-    __asm__("nop\n\t");
-    PORTD = p[i] | CLOCK_BITS;
-    //PORTD = 0x01;
-    __asm__("nop\n\t");
-    //PORTD = 0x0;
-    PORTD = p[i] & ~CLOCK_BITS;
-    __asm__("nop\n\t");
-    //PORTD = 0x01;
-    PORTD = p[i] | CLOCK_BITS;
+  for (int i = 0; i < columns/8; i++) {
+    for (int j = 0; j < 8; j++) {
+      uint8_t v = ((p[i] & (1<<j)) == 0)?0:2;
+      PORTD = CLOCK_BITS | v;
+      //__asm__("nop\n\t");
+      PORTD =  ~CLOCK_BITS & v;
+      //__asm__("nop\n\t");
+      PORTD = CLOCK_BITS & v;
+    }
   }
   rowOn(curRow%7);
   curRow++;
