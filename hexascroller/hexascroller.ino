@@ -14,8 +14,26 @@
 // ROW 5: B5 (14)
 // ROW 6: B6 (15)
 
+// Commands:
+// A command is a command code followed by a command-specific
+// amount of raw data. The maximum command length is 122 bytes.
+// If a command is not completed with 500ms, it is abandoned.
+// Command codes are in the range 0xA0-0xAF.
+// When a command is received, a response message is sent which
+// consists of a status code, a length field N, and N bytes of data.
+// Codes:
+// 0xA0 - status (not yet implemented)
+// 0xA1 - display text
+//        Payload:
+//        X - 1 byte signed x offset
+//        Y - 1 byte signed y offset
+//        s... - string to display
+// 0xA2 - display bitmap
+//        Payload:
+//        b... - 120 bytes of 1-bit bitmap data
+//
+
 #define COMM_PORT Serial
-#define USE_ECHO
 
 // Each display module is a 120x7 grid. (Each module
 // consists of two chained 60x7 modules.)
@@ -55,6 +73,13 @@ public:
   }
   void writeStr(char* p, int x, int y) {
     while (*p != '\0') {
+      x = writeChar(*p,x,y);
+      p++;
+      x++;
+    }
+  }
+  void writeNStr(char* p, int n, int x, int y) {
+    while (n-- > 0) {
       x = writeChar(*p,x,y);
       p++;
       x++;
@@ -169,6 +194,10 @@ void setup() {
   //pinMode(48,OUTPUT);
   //digitalWrite(48,HIGH);
   
+  b.erase();
+  b.writeStr("Panel ready",0,0);
+  b.flip();
+
   delay(100);
 }
 
@@ -180,12 +209,9 @@ static unsigned int curRow = 0;
 // Bitmap message
 
 
-#define CMD_SIZE 140
+#define CMD_SIZE 122
 #define MESSAGE_TICKS (columns*20)
 static int message_timeout = 0;
-static char message[CMD_SIZE+1];
-static char command[CMD_SIZE+1];
-static int cmdIdx = 0;
 
 const static uint16_t DEFAULT_MSG_OFF = 0x10;
 
@@ -216,75 +242,48 @@ int8_t succeed(const char* message = NULL) {
   return response(message, CODE_OK);
 }
 
-int8_t processCommand() {
-  if (command[0] == '!') {
-    // command processing
-    switch (command[1]) {
-    case 's':
-      // Set default string
-      for (int i = 2; i < CMD_SIZE+1; i++) {
-	if (command[i] == '\0') break;
-      }
-      return succeed(command+2);
-    case 'S':
-      // Get current scroller status
-      return succeed(message);
-    case 'A':
-      // Send message to accessory serial port
-      return fail("No more accessory port");
-    case 'D':
-      return fail("No more date commands");
-    case 'b':
-      return fail("Buzz is no longer supported");
-    case 't':
-      return fail("Music is no longer supported");
-    default:
-      return fail("RTFM, known command letters are SsADbtC and dl|dr");
-    }
-  } else {
-    // message
-    message_timeout = MESSAGE_TICKS;
-    for (int i = 0; i < CMD_SIZE+1; i++) {
-      message[i] = command[i];
-      //if (command[i] == '\n' || command[i] == '\r') { message[i] = '\0';
-      if (command[i] == '\0') break;
-    }
-    return succeed();
-  }
-}
 
 static int xoff = 0;
 static int yoff = 0;
 
 static int frames = 0;
 const int scroll_delay = 200;
+
+static int curCmd = 0;
+static int cmdLen = -1;
+static char command[CMD_SIZE+1];
+static int cmdIdx = 0;
+
 void loop() {
-  b.erase();
-  b.writeStr("hello hello hello 10010 hello hello",-1,0);
-  b.flip();
-  while (frames < scroll_delay) {
     int nextChar = COMM_PORT.read();
-    #ifdef USE_ECHO
-    if (nextChar > -1) COMM_PORT.write(nextChar);
-    #endif
-    while (nextChar != -1) {
-      if (nextChar == '\n' || nextChar == '\r' || nextChar == '\0') {
-        command[cmdIdx] = '\0';
-        processCommand();
+    if (nextChar != -1) {
+      // if not in current command...
+      if (curCmd == 0) {
+        if ((nextChar & 0xA0) == 0xA0) {
+          curCmd = nextChar;
+          cmdLen = -1;
+        }
+        return;
+      } else if (cmdLen == -1) {
+        cmdLen = nextChar;
         cmdIdx = 0;
-        nextChar = -1;
+        return;
       } else {
-        command[cmdIdx] = nextChar;
-        cmdIdx++;
-        if (cmdIdx >= CMD_SIZE) cmdIdx = CMD_SIZE-1;
-        nextChar = COMM_PORT.read();
-        #ifdef USE_ECHO
-        if (nextChar > -1) COMM_PORT.write(nextChar);
-        #endif
+        command[cmdIdx++] = nextChar;
+        if (cmdIdx == cmdLen) {
+          switch(curCmd) {
+            case 0xA1:
+              b.erase();
+              b.writeNStr(command+2,cmdLen-2,command[0],command[1]);
+              b.flip();
+              break;
+            case 0xA2:
+              break;
+          }
+          curCmd = 0;
+        }
       }
     }
-  }
-  frames = 0;
 }
 
 #define CLOCK_BITS 1
