@@ -178,7 +178,13 @@ void setup() {
 
 static unsigned int curRow = 0;
 
-#define CMD_SIZE 100
+// Tomorrow: define message types
+
+// String message
+// Bitmap message
+
+
+#define CMD_SIZE 140
 #define MESSAGE_TICKS (columns*20)
 static int message_timeout = 0;
 static char message[CMD_SIZE+1];
@@ -236,18 +242,6 @@ int8_t processCommand() {
       return fail("Buzz is no longer supported");
     case 't':
       return fail("Music is no longer supported");
-    case 'C':
-      return succeed();
-    case 'd':
-      switch (command[2]) {
-      case 'l': dir = LEFT; break;
-      case 'r': dir = RIGHT; break;
-      // Up and down have been disabled
-      case 'n': dir = NONE; break;
-      default:
-	return fail("Unrecognized direction");
-      }
-      return succeed();
     default:
       return fail("RTFM, known command letters are SsADbtC and dl|dr");
     }
@@ -267,8 +261,11 @@ static int xoff = 0;
 static int yoff = 0;
 
 static int frames = 0;
-
+const int scroll_delay = 200;
 void loop() {
+  b.erase();
+  b.writeStr("hello hello hello 10010 hello hello",0,0);
+  b.flip();
   while (frames < scroll_delay) {
     int nextChar = COMM_PORT.read();
     #ifdef USE_ECHO
@@ -292,9 +289,6 @@ void loop() {
     }
   }
   frames = 0;
-  b.erase();
-  b.writeStr("hello hello hello 10010 hello hello",0,0);
-  b.flip();
 }
 
 #define CLOCK_BITS 1
@@ -313,7 +307,7 @@ ISR(TIMER3_COMPA_vect)
       //__asm__("nop\n\t");
       PORTD =  ~CLOCK_BITS & v;
       //__asm__("nop\n\t");
-      PORTD = CLOCK_BITS & v;
+      PORTD = CLOCK_BITS | v;
     }
   }
   rowOn(curRow%7);
