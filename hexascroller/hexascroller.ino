@@ -153,6 +153,7 @@ public:
   }
   
   uint8_t* getDisplay() { return dpl; }
+  uint8_t* getBuffer() { return data; }
 };
 
 static Bitmap b;
@@ -278,6 +279,12 @@ void loop() {
               b.flip();
               break;
             case 0xA2:
+              uint8_t* buffer = b.getBuffer();
+              b.erase();
+              for (uint8_t i = 0; i < columns; i++) {
+                buffer[i] = command[i];
+              }
+              b.flip();
               break;
           }
           curCmd = 0;

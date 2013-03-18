@@ -3,6 +3,9 @@
 import serial
 import sys
 import struct
+import time
+
+from PIL import Image
 
 class Monitor:
     def __init__(self):
@@ -20,12 +23,29 @@ class Monitor:
 mon = Monitor()
 mon.open("/dev/ttyACM0")
 
-if len(sys.argv) > 1:
-    s = " ".join(sys.argv[1:])
-    s = s[:120]
-    print len(s)+2
-    mon.serialPort.write(struct.pack("BBbb",0xA1,len(s)+2,0,0))
+def show(x,y,img):
+    s = ""
+    for i in range(120):
+        n = 0
+        for j in range(7):
+            v = img.getpixel((i+x,j+y))
+            if v:
+                n |= 1 << (7-j)
+        s = s + struct.pack("B",n)
+    mon.serialPort.write(struct.pack("BB",0xA2,120))
     mon.serialPort.write(s)
+
+x = 0
+y = 0
+img = Image.open("test.png").convert("1")
+if len(sys.argv) > 3:
+    x = int(sys.argv[1])
+    y = int(sys.argv[2])
+    img = Image.open(sys.argv[3]).convert("1")
+
+for y in range(img.size[1]-7):
+    show(x,y,img)
+    time.sleep(0.05)
 
 mon.close()
 
