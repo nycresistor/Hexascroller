@@ -86,7 +86,7 @@ public:
     return textLen;
   }
 
-  int writeChar(char c, int x, int y, bool wrap = true) {
+  int writeChar(char c, int x, int y) {
     int coff = (int)c * 8;
     uint8_t row = pgm_read_byte(charData+coff);
     if (c == ' ') return x+2;
@@ -96,10 +96,6 @@ public:
     uint8_t mask = 0xfe >> y;
     while (row != 1) {
       row = row >> y;
-      if (wrap) {
-        x = x % (columns);
-        if (x < 0) { x = x + columns; }
-      }
       if (x >= 0 && x < columns) {
         data[x] = row | (data[x] & mask);
       }
@@ -264,7 +260,7 @@ static int frames = 0;
 const int scroll_delay = 200;
 void loop() {
   b.erase();
-  b.writeStr("hello hello hello 10010 hello hello",0,0);
+  b.writeStr("hello hello hello 10010 hello hello",-1,0);
   b.flip();
   while (frames < scroll_delay) {
     int nextChar = COMM_PORT.read();
