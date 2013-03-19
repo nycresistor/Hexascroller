@@ -14,6 +14,11 @@
 // ROW 5: B5 (14)
 // ROW 6: B6 (15)
 
+// Accessory port is on UART1
+// Relay: C7 (10)
+
+#define RELAY_PIN 10
+
 // Commands:
 // A command is a command code followed by a command-specific
 // amount of raw data. The maximum command length is 122 bytes.
@@ -62,6 +67,7 @@
 //
 
 #define COMM_PORT Serial
+#define ACC_PORT Serial1
 
 // Each display module is a 120x7 grid. (Each module
 // consists of two chained 60x7 modules.)
@@ -195,7 +201,15 @@ inline void rowOn(int row) {
   PORTB |= 1 << row;
 }
 
+void setRelay(boolean on) {
+  digitalWrite(RELAY_PIN,on?HIGH:LOW);
+}
+
 void setup() {
+  // Make sure relay is off initially
+  PORTC &= ~_BV(7);
+  DDRC |= _BV(7);
+  
   b.erase();
   b.flip();
   b.erase();
@@ -218,11 +232,7 @@ void setup() {
 
   COMM_PORT.begin(9600);
 
-  //pinMode(46,OUTPUT);
-  //digitalWrite(46,LOW);
-
-  //pinMode(48,OUTPUT);
-  //digitalWrite(48,HIGH);
+  ACC_PORT.begin(9600);
   
   b.erase();
   b.writeStr("Panel ready",0,0);
@@ -323,6 +333,18 @@ void loop() {
                 uint8_t v = EEPROM.read(0);
                 succeed(&v,1);
               }
+              break;
+            case 0xA5: // write to accessort uart
+              {
+                for (int i = 0; i < cmdLen; i++) {
+                  ACC_PORT.write(command[i]);
+                }
+              }
+              succeed();
+              break;
+            case 0xA6: // turn on/off relay
+              setRelay(command[0] != 0);
+              succeed();
               break;
             default:
               fail((const uint8_t*)&curCmd,1);
