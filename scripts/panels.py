@@ -47,8 +47,8 @@ for port in range(0,2):
     print("{0} - {1}",name,ord(v[0]))
     p.close()
     
-//for p in panels:
-//    p.close()
+#for p in panels:
+#    p.close()
 
 
 
