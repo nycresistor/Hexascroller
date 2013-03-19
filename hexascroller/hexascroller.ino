@@ -298,60 +298,58 @@ void loop() {
           curCmd = nextChar;
           cmdLen = -1;
         }
-        return;
       } else if (cmdLen == -1) {
         cmdLen = nextChar;
         cmdIdx = 0;
-        return;
       } else {
         command[cmdIdx++] = nextChar;
-        if (cmdIdx == cmdLen) {
-          switch(curCmd) {
-            case 0xA1: // text
+      }
+      if (curCmd != 0 && cmdIdx == cmdLen) {
+        switch(curCmd) {
+          case 0xA1: // text
+            b.erase();
+            b.writeNStr(command+2,cmdLen-2,command[0],command[1]);
+            b.flip();
+            succeed();
+            break;
+          case 0xA2: // bitmap
+            {
+              uint8_t* buffer = b.getBuffer();
               b.erase();
-              b.writeNStr(command+2,cmdLen-2,command[0],command[1]);
+              for (uint8_t i = 0; i < columns; i++) {
+                buffer[i] = command[i];
+              }
               b.flip();
               succeed();
-              break;
-            case 0xA2: // bitmap
-              {
-                uint8_t* buffer = b.getBuffer();
-                b.erase();
-                for (uint8_t i = 0; i < columns; i++) {
-                  buffer[i] = command[i];
-                }
-                b.flip();
-                succeed();
+            }
+            break;
+          case 0xA3: // set ID
+            EEPROM.write(0,command[0]);
+            succeed();
+            break;
+          case 0xA4: // get ID
+            {
+              uint8_t v = EEPROM.read(0);
+              succeed(&v,1);
+            }
+            break;
+          case 0xA5: // write to accessort uart
+            {
+              for (int i = 0; i < cmdLen; i++) {
+                ACC_PORT.write(command[i]);
               }
-              break;
-            case 0xA3: // set ID
-              EEPROM.write(0,command[0]);
-              succeed();
-              break;
-            case 0xA4: // get ID
-              {
-                uint8_t v = EEPROM.read(0);
-                succeed(&v,1);
-              }
-              break;
-            case 0xA5: // write to accessort uart
-              {
-                for (int i = 0; i < cmdLen; i++) {
-                  ACC_PORT.write(command[i]);
-                }
-              }
-              succeed();
-              break;
-            case 0xA6: // turn on/off relay
-              setRelay(command[0] != 0);
-              succeed();
-              break;
-            default:
-              fail((const uint8_t*)&curCmd,1);
-              break;
-          }
-          curCmd = 0;
+            }
+            succeed();
+            break;
+          case 0xA6: // turn on/off relay
+            setRelay(command[0] != 0);
+            succeed();
+            break;
+          default:
+            fail((const uint8_t*)&curCmd,1);
+            break;
         }
+        curCmd = 0;
       }
     }
 }
