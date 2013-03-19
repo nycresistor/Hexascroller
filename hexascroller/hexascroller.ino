@@ -21,16 +21,44 @@
 // Command codes are in the range 0xA0-0xAF.
 // When a command is received, a response message is sent which
 // consists of a status code, a length field N, and N bytes of data.
-// Codes:
+//
+// Every command should recieve a response, consisting of an error
+// code, a length field N, and N bytes of data.
+//
+// Reponse codes:
+// 0x00 - OK
+// 0x01 - Unspecified failure
+//
+// Command Codes:
 // 0xA0 - status (not yet implemented)
 // 0xA1 - display text
 //        Payload:
 //        X - 1 byte signed x offset
 //        Y - 1 byte signed y offset
 //        s... - string to display
+//        Response payload: None
 // 0xA2 - display bitmap
 //        Payload:
 //        b... - 120 bytes of 1-bit bitmap data
+//        Response payload: None
+// 0xA3 - set ID
+//        Payload:
+//        I - 1 byte unsigned ID
+//        Response payload: None
+// 0xA4 - query ID
+//        Payload: none
+//        Response payload:
+//        I - 1 byte unsigned ID
+// 0xA5 - write to accessory UART
+//        Payload:
+//        b... - up to 120 bytes of data to write to
+//        the accessory UART. It is recommended that
+//        the messages be short.
+//        Response payload: None
+// 0xA6 - Turn on/off relay
+//        Payload:
+//        V - 1 byte indicating on (non-zero) or off (zero)
+//        Response payload: None
 //
 
 #define COMM_PORT Serial
@@ -45,6 +73,7 @@ static int active_row = -1;
 #include <avr/pgmspace.h>
 #include "hfont.h"
 #include <stdint.h>
+#include <EEPROM.h>
 
 // Resources:
 // 2.5K RAM
@@ -218,29 +247,24 @@ const static uint16_t DEFAULT_MSG_OFF = 0x10;
 
 
 enum {
-  CODE_OK = 0,
-  CODE_ERROR = -1
+  RSP_OK = 0,
+  RSP_ERROR = 1
 };
 
-int8_t response(const char* message, int8_t code) {
-  const static char* errMsg = "ERROR";
-  const static char* okMsg = "OK";
-  const char* prefix = (code == CODE_OK)?okMsg:errMsg;
-  COMM_PORT.print(prefix);
-  if (message != NULL) {
-    COMM_PORT.print(": ");
-    COMM_PORT.print(message);
+void response(uint8_t code, const uint8_t* payload, uint8_t psize) {
+  COMM_PORT.write(code);
+  COMM_PORT.write(psize);
+  for (int i = 0; i < psize; i++) {
+    COMM_PORT.write(payload[i]);
   }
-  COMM_PORT.print("\n");
-  return code;
 }
 
-int8_t fail(const char* message = NULL) {
-  return response(message, CODE_ERROR);
+void fail(const uint8_t* payload = NULL, uint8_t psize = 0) {
+  response(RSP_ERROR, payload, psize);
 }
 
-int8_t succeed(const char* message = NULL) {
-  return response(message, CODE_OK);
+void succeed(const uint8_t* payload = NULL, uint8_t psize = 0) {
+  response(RSP_OK, payload, psize);
 }
 
 
@@ -273,18 +297,35 @@ void loop() {
         command[cmdIdx++] = nextChar;
         if (cmdIdx == cmdLen) {
           switch(curCmd) {
-            case 0xA1:
+            case 0xA1: // text
               b.erase();
               b.writeNStr(command+2,cmdLen-2,command[0],command[1]);
               b.flip();
+              succeed();
               break;
-            case 0xA2:
-              uint8_t* buffer = b.getBuffer();
-              b.erase();
-              for (uint8_t i = 0; i < columns; i++) {
-                buffer[i] = command[i];
+            case 0xA2: // bitmap
+              {
+                uint8_t* buffer = b.getBuffer();
+                b.erase();
+                for (uint8_t i = 0; i < columns; i++) {
+                  buffer[i] = command[i];
+                }
+                b.flip();
+                succeed();
               }
-              b.flip();
+              break;
+            case 0xA3: // set ID
+              EEPROM.write(0,command[0]);
+              succeed();
+              break;
+            case 0xA4: // get ID
+              {
+                uint8_t v = EEPROM.read(0);
+                succeed(&v,1);
+              }
+              break;
+            default:
+              fail((const uint8_t*)&curCmd,1);
               break;
           }
           curCmd = 0;
