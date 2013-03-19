@@ -39,16 +39,18 @@ class Panel:
         self.serialPort.close()
 
 panels = [None]*3
-for port in range(0,2):
+for port in range(0,3):
     name = "/dev/ttyACM{0}".format(port)
     p = Panel()
     p.open(name)
     v = p.command(CC_GET_ID,"",1)
-    print("{0} - {1}",name,ord(v[0]))
-    p.close()
+    id = ord(v[0])
+    panels[id] = p
+
+panels[0].command(CC_RELAY,struct.pack("B",1),0)
     
-#for p in panels:
-#    p.close()
+for p in panels:
+    p.close()
 
 
 
