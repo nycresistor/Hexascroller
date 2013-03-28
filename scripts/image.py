@@ -20,8 +20,10 @@ class Monitor:
     def close(self):
         self.serialPort.close()
 
-mon = Monitor()
-mon.open("/dev/ttyACM0")
+mon = [ Monitor(), Monitor(), Monitor() ]
+mon[0].open("/dev/ttyACM0")
+mon[1].open("/dev/ttyACM1")
+mon[2].open("/dev/ttyACM2")
 
 def show(x,y,img):
     s = ""
@@ -32,13 +34,14 @@ def show(x,y,img):
             if v:
                 n |= 1 << (7-j)
         s = s + struct.pack("B",n)
-    mon.serialPort.write(struct.pack("BB",0xA2,120))
-    mon.serialPort.write(s)
-    rsp = mon.serialPort.read(2)
-    ok = len(rsp) == 2 and rsp[0] == '\x00' and rsp[1] == '\x00'
-    if not ok:
-        print("Did not receive correct response!")
-        print("Response: "+",".join(map(lambda x:hex(ord(x)),rsp)))
+    for m in mon:
+        m.serialPort.write(struct.pack("BB",0xA2,120))
+        m.serialPort.write(s)
+        rsp = m.serialPort.read(2)
+        ok = len(rsp) == 2 and rsp[0] == '\x00' and rsp[1] == '\x00'
+        if not ok:
+            print("Did not receive correct response!")
+            print("Response: "+",".join(map(lambda x:hex(ord(x)),rsp)))
 
 x = 0
 y = 0
