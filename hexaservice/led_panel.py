@@ -46,7 +46,7 @@ class Panel:
 
     def setMessage(self, message, x =0, y =0):
         message = message[:120]        
-        cmd = struct.pack("bb",x,y))+message
+        cmd = struct.pack("bb",x,y)+message
         self.command(CC_TEXT,cmd,0)
 
     def getID(self):
