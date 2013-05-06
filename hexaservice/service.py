@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import led_panel
 from led_panel import panels
+from font_util import basic_font
+from PIL import Image
 import time
 import signal
 import sys
@@ -20,7 +22,11 @@ if __name__=="__main__":
     while True:
         msg = time.strftime("%H:%M:%S")
         for j in range(3):
-            panels[j].setMessage(msg,0,0)
+            txtimg = base_font.strImg(msg)
+            img = Image.new("1",(120,7))
+            img.paste(txtimg,(0,0))
+            img.paste(txtimg,(60,0))
+            panels[j].setImage(img,0,0)
         time.sleep(0.15)
 
     panels[0].setRelay(False)
