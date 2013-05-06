@@ -1,6 +1,7 @@
 import socket
 import json
 import threading
+import logging
 
 HEXAPORT=1214 # it's the Kazaa port! :)
 
@@ -14,8 +15,10 @@ class Listener(threading.Thread):
     def run(self):
         while True:
             (conn, addr) = self.sock.accept()
+            logging.info("Connection from {0}".format(addr))
             print(conn,addr)
 
 if __name__=="__main__":
+    logging.basicConfig(filename="hexa.log",level=logging.INFO)
     l = Listener()
     l.start()

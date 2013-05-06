@@ -64,6 +64,20 @@
 //        Payload:
 //        V - 1 byte indicating on (non-zero) or off (zero)
 //        Response payload: None
+// 
+// Commands from 0xB0+ operate on the offscreen buffer level
+// 0xB0 - Clear offscreen buffer
+//        Payload: None
+//        Response payload: None
+// 0xB1 - add text
+//        Payload:
+//        X - 1 byte signed x offset
+//        Y - 1 byte signed y offset
+//        s... - string to display
+//        Response payload: None
+// 0xB2 - Display offscreen buffer
+//        Payload: None
+//        Response payload: None
 //
 
 #define COMM_PORT Serial
@@ -306,6 +320,18 @@ void loop() {
       }
       if (curCmd != 0 && cmdIdx == cmdLen) {
         switch(curCmd) {
+          case 0xB0: // clear buffer
+            b.erase();
+            succeed();
+            break;
+          case 0xB1: // add text
+            b.writeNStr(command+2,cmdLen-2,command[0],command[1]);
+            succeed();
+            break;
+          case 0xB2: // flip
+            b.flip();
+            succeed();
+            break;
           case 0xA1: // text
             b.erase();
             b.writeNStr(command+2,cmdLen-2,command[0],command[1]);
