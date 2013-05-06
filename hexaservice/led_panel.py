@@ -49,6 +49,18 @@ class Panel:
         cmd = struct.pack("bb",x,y)+message
         self.command(CC_TEXT,cmd,0)
 
+    def setImage(self, img, x =0, y =0):
+        bitmap = ''
+        width = min(img.size[0]-x,120)
+        height = min(7,img.size[1]-y)
+        for i in range(width):
+            b = 0
+            for j in range(height):
+                if img.getpixel(( i+x, j+y )):
+                    b |= 1 << (7-j)
+            bitmap = bitmap + struct.pack("B",b)
+        self.command(CC_BITMAP,bitmap,0)
+
     def getID(self):
         v = self.command(CC_GET_ID,"",1)
         id = ord(v[0])
