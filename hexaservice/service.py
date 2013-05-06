@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import led_panel
 from led_panel import panels
-from font_util import basic_font
+from fontutil import base_font
 from PIL import Image
 import time
 import signal
