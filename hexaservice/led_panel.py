@@ -21,7 +21,6 @@ def compile_image(img, x=0, y=0):
             if img.getpixel(( i+x, j+y )):
                 b |= 1 << (7-j)
         bitmap = bitmap + struct.pack("B",b)
-    print width, height, len(bitmap)
     return bitmap
 
 class Panel:
