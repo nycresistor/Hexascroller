@@ -19,7 +19,7 @@ class Panel:
         self.serialPort = serial.Serial(portName, baud, timeout=0.5)
         try:
             self.serialPort.open()
-        except serial.SerialException, e:
+        except serial.SerialException as e:
             sys.stderr.write("Could not open serial port %s: %s\n" % (self.serialPort.portstr, e))
 
     def command(self,command,payload,expected):

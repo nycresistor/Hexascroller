@@ -14,8 +14,8 @@ if __name__=="__main__":
     led_panel.init()
     panels[0].setRelay(True)
     def sigint_handler(signal,frame):
-	print("Caught ctrl-C; shutting down.")
-	panels[0].setRelay(False)
+        print("Caught ctrl-C; shutting down.")
+        panels[0].setRelay(False)
         led_panel.shutdown()
         sys.exit(0)
     signal.signal(signal.SIGINT,sigint_handler)
