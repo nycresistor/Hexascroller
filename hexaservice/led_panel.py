@@ -11,6 +11,18 @@ CC_GET_ID = 0xA4
 CC_UART = 0xA5
 CC_RELAY = 0xA6
 
+def compile_image(img, x=0, y=0):
+    bitmap = ''
+    width = min(img.size[0]-x,120)
+    height = min(7,img.size[1]-y)
+    for i in range(width):
+        b = 0
+        for j in range(height):
+            if img.getpixel(( i+x, j+y )):
+                b |= 1 << (7-j)
+            bitmap = bitmap + struct.pack("B",b)
+    return bitmap
+
 class Panel:
     def __init__(self):
         self.serialPort = None
@@ -50,15 +62,10 @@ class Panel:
         self.command(CC_TEXT,cmd,0)
 
     def setImage(self, img, x =0, y =0):
-        bitmap = ''
-        width = min(img.size[0]-x,120)
-        height = min(7,img.size[1]-y)
-        for i in range(width):
-            b = 0
-            for j in range(height):
-                if img.getpixel(( i+x, j+y )):
-                    b |= 1 << (7-j)
-            bitmap = bitmap + struct.pack("B",b)
+        self.command(CC_BITMAP,compile_image(img,x,y),0)
+
+
+    def setCompiledImage(self, bitmap):
         self.command(CC_BITMAP,bitmap,0)
 
     def getID(self):
