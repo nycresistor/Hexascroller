@@ -36,6 +36,11 @@ class Segment {
         else ellipse(col * PIXEL_SPACING + SCREEN_SPACING, row * PIXEL_SPACING, PIXEL_DIAMETER, PIXEL_DIAMETER);
       }
     }
+    
+    fill(150);
+    rect((SEGMENT_WIDTH / 2) * PIXEL_SPACING, 0, SCREEN_SPACING, SEGMENT_HEIGHT * PIXEL_SPACING);
+    if (this.num < 2) rect(SEGMENT_WIDTH * PIXEL_SPACING, 0, SCREEN_SPACING, SEGMENT_HEIGHT * PIXEL_SPACING);
+    
     popMatrix();
   }
 }
