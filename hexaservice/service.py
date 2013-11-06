@@ -49,9 +49,9 @@ if __name__=="__main__":
         txtimg = base_font.strImg(msg)
         img = Image.new("1",(120,7))
         img.paste(txtimg,(15,0))
-        bmsg = "{0:3.2} .beats".format(internet_time())
+        bmsg = "{0:3.2f} .b".format(internet_time())
         txt2img = base_font.strImg(bmsg)
-        img.paste(txt2img,(70,0))
+        img.paste(txt2img,(75,0))
         bitmap = compile_image(img,0,0)
 
         for j in range(3):
