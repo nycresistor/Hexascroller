@@ -45,11 +45,13 @@ if __name__=="__main__":
     signal.signal(signal.SIGINT,sigint_handler)
 
     while True:
+        beats = internet_time()
+        print beats
         msg = time.strftime("%H:%M:%S")
         txtimg = base_font.strImg(msg)
         img = Image.new("1",(120,7))
         img.paste(txtimg,(15,0))
-        bmsg = "{0:3.2f} .b".format(internet_time())
+        bmsg = "{0:3.2f} .b".format(beats)
         txt2img = base_font.strImg(bmsg)
         img.paste(txt2img,(75,0))
         bitmap = compile_image(img,0,0)
