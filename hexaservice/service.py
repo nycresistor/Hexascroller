@@ -16,7 +16,6 @@ def internet_time():
     "Swatch Internet Time. Biel meridian."
     h, m, s = time.gmtime()[3:6]
     h += 1 # Biel time zone: UTC+1
-    print h,m,s
     seconds = s + (60.0*m) + (60.0*60.0*h)
     beats = seconds * 1000.0 / (60.0*60.0*24.0)
     beats = beats % 1000.0
@@ -51,10 +50,10 @@ if __name__=="__main__":
         txtimg = base_font.strImg(msg)
         img = Image.new("1",(120,7))
         img.paste(txtimg,(15,0))
-        bmsg = "{0:3.2f}".format(beats)
+        bmsg = "{0:03.2f}".format(beats)
         txt2img = base_font.strImg(bmsg)
-        img.paste(txt2img,(65,0))
-        img.paste(base_font.strImg(".beats",(100,0)))
+        img.paste(txt2img,(62,0))
+        img.paste(base_font.strImg(".beats"),(93,0))
         bitmap = compile_image(img,0,0)
 
         for j in range(3):
