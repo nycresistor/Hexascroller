@@ -7,6 +7,7 @@ import time
 import signal
 import sys
 import threading
+import Queue
 
 debug = False
 
@@ -39,8 +40,25 @@ def render_time_bitmap():
     return bitmap
 
 class PanelThread(threading.Thread):
-    def __init__(self, panel):
-        pass
+    def __init__(self, bitmapQueue):
+        super(PanelThread, self).__init__()
+        self.bitmapQueue = bitmapQueue
+        self.stoprequest = threading.Event()
+
+    def run(self):
+
+        while not self.stoprequest.isSet():
+            try:
+                bitmap = self.bitmapQueue.get(True, 0.05)
+                for j in range(3):
+                    panels[j].setCompiledImage(bitmap)
+        
+            except Queue.Empty:
+                continue
+
+    def join(self, timeout=None):
+        self.stoprequest.set()
+        super(PanelThread, self).join(timeout)
 
 class ServiceThread:
     pass
@@ -53,22 +71,26 @@ if __name__=="__main__":
 
     led_panel.init(debug)
     panels[0].setRelay(True)
+
+    bitmapQueue = Queue.Queue()
+    panelThread = PanelThread(bitmapQueue=bitmapQueue)
     
     def sigint_handler(signal,frame):
         print("Caught ctrl-C; shutting down.")
+        panelThread.join()
         panels[0].setRelay(False)
         led_panel.shutdown()
         sys.exit(0)
     signal.signal(signal.SIGINT,sigint_handler)
 
-    while True:
-        
-        bitmap = render_time_bitmap()
+    panelThread.start()
 
-        for j in range(3):
-            panels[j].setCompiledImage(bitmap)
-        
-        time.sleep(0.10)
+    while True:
+
+        bitmapQueue.put(render_time_bitmap())
+        time.sleep(0.1)
+
+    panelThread.join()
 
     panels[0].setRelay(False)
 
