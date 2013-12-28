@@ -10,8 +10,6 @@ import threading
 
 debug = False
 
-
-
 def internet_time():
     "Swatch Internet Time. Biel meridian."
     h, m, s = time.gmtime()[3:6]
@@ -20,6 +18,25 @@ def internet_time():
     beats = seconds * 1000.0 / (60.0*60.0*24.0)
     beats = beats % 1000.0
     return beats
+
+def internet_time2():
+    "More granular Swatch time. Courtesy https://github.com/gcohen55/pebble-beapoch"
+    return (((time.time() + 3600) % 86400) * 1000) / 86400
+
+def render_time_bitmap():
+    "Render local time + Swatch beats into a 2-panel bitmap"
+    beats = internet_time2()
+    msg = time.strftime("%H:%M:%S")
+    txtimg = base_font.strImg(msg)
+    img = Image.new("1",(120,7))
+    img.paste(txtimg,(15,0))
+    bmsg = "{0:03.2f}".format(beats)
+    txt2img = base_font.strImg(bmsg)
+    img.paste(txt2img,(62,0))
+    img.paste(base_font.strImg(".beats"),(93,0))
+    bitmap = compile_image(img,0,0)
+
+    return bitmap
 
 class PanelThread(threading.Thread):
     def __init__(self, panel):
@@ -45,20 +62,13 @@ if __name__=="__main__":
     signal.signal(signal.SIGINT,sigint_handler)
 
     while True:
-        beats = internet_time()
-        msg = time.strftime("%H:%M:%S")
-        txtimg = base_font.strImg(msg)
-        img = Image.new("1",(120,7))
-        img.paste(txtimg,(15,0))
-        bmsg = "{0:03.2f}".format(beats)
-        txt2img = base_font.strImg(bmsg)
-        img.paste(txt2img,(62,0))
-        img.paste(base_font.strImg(".beats"),(93,0))
-        bitmap = compile_image(img,0,0)
+        
+        bitmap = render_time_bitmap()
 
         for j in range(3):
             panels[j].setCompiledImage(bitmap)
-        time.sleep(0.1)
+        
+        time.sleep(0.10)
 
     panels[0].setRelay(False)
 
