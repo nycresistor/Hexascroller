@@ -8,6 +8,7 @@ import signal
 import sys
 import threading
 import Queue
+import socket
 
 debug = False
 
@@ -57,11 +58,45 @@ class PanelThread(threading.Thread):
                 continue
 
     def join(self, timeout=None):
+        print "Leaving panel thread"
         self.stoprequest.set()
         super(PanelThread, self).join(timeout)
 
-class ServiceThread:
-    pass
+class ServiceThread(threading.Thread):
+    def __init__(self, messageQueue):
+        super(ServiceThread, self).__init__()
+        self.messageQueue = messageQueue
+        self.stoprequest = threading.Event()
+
+    def run(self):
+        host = '' 
+        port = 50001
+        backlog = 5 
+        size = 1024 
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((host,port)) 
+        s.listen(backlog)
+        s.settimeout(1)
+
+        while not self.stoprequest.isSet():
+            
+            try:
+                client, address = s.accept() 
+                data = client.recv(size) 
+
+                print data
+                
+                if data: 
+                    client.send(data) 
+                client.close()
+            except (socket.timeout, socket.error) as e:
+                print e
+
+    def join(self, timeout=None):
+        print "Leaving service thread"
+        self.stoprequest.set()
+        super(ServiceThread, self).join(timeout)
 
 
 if __name__=="__main__":
@@ -74,16 +109,21 @@ if __name__=="__main__":
 
     bitmapQueue = Queue.Queue()
     panelThread = PanelThread(bitmapQueue=bitmapQueue)
+
+    messageQueue = Queue.Queue()
+    serviceThread = ServiceThread(messageQueue=messageQueue)
     
     def sigint_handler(signal,frame):
         print("Caught ctrl-C; shutting down.")
         panelThread.join()
+        serviceThread.join()
         panels[0].setRelay(False)
         led_panel.shutdown()
         sys.exit(0)
     signal.signal(signal.SIGINT,sigint_handler)
 
     panelThread.start()
+    serviceThread.start()
 
     while True:
 
