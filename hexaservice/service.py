@@ -17,49 +17,118 @@ debug = False
 host = ''
 port = 50000
 
-MODE_TIME = 0
-MODE_MESSAGE = 1
+bitmapGeneratorUnits = []
+unitQueue = []
 
-mode = MODE_TIME
+defaultUnitNum = 0 # first unit in bitmapGeneratorUnits
+currentUnitNum = 0
 
-messagesToScroll = []
+class MessageUnit():
+    def __init__(self, messageQueue):
+        self.running = False
+        self.waitingToRun = False
+        self.timeout = 5
+        self.message = None
+        self.messageQueue = messageQueue
+        self.priority = 1
+        self.xOffset = 120
+        self.txtimg = None
+        self.scrollSpeed = 0.05
 
-def internet_time():
-    "Swatch Internet Time. Biel meridian."
-    h, m, s = time.gmtime()[3:6]
-    h += 1 # Biel time zone: UTC+1
-    seconds = s + (60.0*m) + (60.0*60.0*h)
-    beats = seconds * 1000.0 / (60.0*60.0*24.0)
-    beats = beats % 1000.0
-    return beats
+    def render_message(self):
+        
+        if self.txtimg is None:
+            self.txtimg = base_font.strImg(self.message)
 
-def internet_time2():
-    "More granular Swatch time. Courtesy https://github.com/gcohen55/pebble-beapoch"
-    return (((time.time() + 3600) % 86400) * 1000) / 86400
+        img = Image.new("1",(120,7))
+        img.paste(self.txtimg,(self.xOffset,0))
+        bitmap = compile_image(img,0,0)
+        return bitmap
 
-def render_time_bitmap():
-    "Render local time + Swatch beats into a 2-panel bitmap"
-    beats = internet_time2()
-    msg = time.strftime("%H:%M:%S")
-    txtimg = base_font.strImg(msg)
-    img = Image.new("1",(120,7))
-    img.paste(txtimg,(15,0))
-    bmsg = "{0:03.2f}".format(beats)
-    txt2img = base_font.strImg(bmsg)
-    img.paste(txt2img,(62,0))
-    img.paste(base_font.strImg(".beats"),(93,0))
-    bitmap = compile_image(img,0,0)
+    def check_messages(self):
+        try:
+            data = self.messageQueue.get(True, 0)
+            print "Got data to scroll: %s" % data
+            return data
 
-    return bitmap
+        except Queue.Empty:
+            return
 
-def render_message():
-    msg = messagesToScroll[0]
-    txtimg = base_font.strImg(msg)
-    img = Image.new("1",(120,7))
-    img.paste(txtimg,(15,0))
-    bitmap = compile_image(img,0,0)
+    def begin(self):
+        self.startTime = time.time()
 
-    return bitmap
+    def run(self):
+        self.waitingToRun = False
+
+        if self.done(): 
+            self.cleanup()
+            return
+
+        bitmap = self.render_message()
+
+        self.xOffset -= 1
+
+        time.sleep(self.scrollSpeed)
+
+        return bitmap
+
+    def done(self):
+        # if time.time() - self.startTime > self.timeout:
+        #     return True
+
+        if self.txtimg is None: return False
+        if self.xOffset < -self.txtimg.size[0]:
+            return True
+
+
+    def cleanup(self):
+        self.message = None
+        self.running = False
+        self.xOffset = 120
+        self.txtimg = None
+
+    def waiting(self):
+        if self.waitingToRun: return True
+
+        message = self.check_messages()
+        if message:
+            self.message = message
+            self.waitingToRun = True
+            return True
+
+class TimeUnit():
+    def __init__(self):
+        self.priority = 99
+
+    def run(self):
+        time.sleep(0.1)
+        return self.render_time_bitmap()
+
+    def render_time_bitmap(self):
+        "Render local time + Swatch beats into a 2-panel bitmap"
+        beats = self.internet_time2()
+
+        msg = time.strftime("%H:%M:%S")
+        txtimg = base_font.strImg(msg)
+        img = Image.new("1",(120,7))
+        img.paste(txtimg,(15,0))
+        bmsg = "{0:03.2f}".format(beats)
+        txt2img = base_font.strImg(bmsg)
+        img.paste(txt2img,(62,0))
+        img.paste(base_font.strImg(".beats"),(93,0))
+        bitmap = compile_image(img,0,0)
+
+        return bitmap
+
+    def internet_time2(self):
+        "More granular Swatch time. Courtesy https://github.com/gcohen55/pebble-beapoch"
+        return (((time.time() + 3600) % 86400) * 1000) / 86400
+
+    def stillRunning(self):
+        return True
+
+    def waiting(self):
+        return False
 
 class PanelThread(threading.Thread):
     def __init__(self, bitmapQueue):
@@ -90,11 +159,9 @@ class ServiceThread(threading.Thread):
         self.stoprequest = threading.Event()
 
     def run(self):
-        
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind((host, port))
-        # server_socket.settimeout(1)
         server_socket.listen(5)
         print "Listening on port %s" % port
 
@@ -107,8 +174,7 @@ class ServiceThread(threading.Thread):
                 data = sockfd.recv(1024)
                 if data:
                     self.messageQueue.put(data)
-                else:
-                    sockfd.close()
+                sockfd.close()
 
     def join(self, timeout=None):
         print "Leaving service thread"
@@ -144,31 +210,29 @@ if __name__=="__main__":
 
     panelThread.start()
 
+    bitmapGeneratorUnits.append(TimeUnit())
+    bitmapGeneratorUnits.append(MessageUnit(messageQueue))
+
+    currentUnit = TimeUnit()
+
     while True:
 
-        try:
-            data = messageQueue.get(True, 0)
-            print "Got data to scroll: %s" % data
-            messagesToScroll.append(data)
-            mode = MODE_MESSAGE
+        bitmap = None
 
-        except Queue.Empty:
-            pass
+        for unit in bitmapGeneratorUnits:
+            if unit.waiting() and unit.priority < currentUnit.priority:
+                currentUnit = unit
+                currentUnit.begin()
 
-        if mode == MODE_TIME:
-            bitmapQueue.put(render_time_bitmap())
-        elif mode == MODE_MESSAGE:
-            bitmapQueue.put(render_message())
-
-
-
-        time.sleep(0.1)
-
+        bitmap = currentUnit.run()
+        if bitmap is None:
+            currentUnit = TimeUnit()
+            continue
         
+        bitmapQueue.put(bitmap)
 
-
-    # panelThread.join()
-
+    panelThread.join()
+    serviceThread.join()
     panels[0].setRelay(False)
 
     led_panel.shutdown()
