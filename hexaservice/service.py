@@ -9,8 +9,20 @@ import sys
 import threading
 import Queue
 import socket
+import multiprocessing
+import select
 
 debug = False
+
+host = ''
+port = 50000
+
+MODE_TIME = 0
+MODE_MESSAGE = 1
+
+mode = MODE_TIME
+
+messagesToScroll = []
 
 def internet_time():
     "Swatch Internet Time. Biel meridian."
@@ -36,6 +48,15 @@ def render_time_bitmap():
     txt2img = base_font.strImg(bmsg)
     img.paste(txt2img,(62,0))
     img.paste(base_font.strImg(".beats"),(93,0))
+    bitmap = compile_image(img,0,0)
+
+    return bitmap
+
+def render_message():
+    msg = messagesToScroll[0]
+    txtimg = base_font.strImg(msg)
+    img = Image.new("1",(120,7))
+    img.paste(txtimg,(15,0))
     bitmap = compile_image(img,0,0)
 
     return bitmap
@@ -69,35 +90,38 @@ class ServiceThread(threading.Thread):
         self.stoprequest = threading.Event()
 
     def run(self):
-        host = '' 
-        port = 50001
-        backlog = 5 
-        size = 1024 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((host,port)) 
-        s.listen(backlog)
-        s.settimeout(1)
+        
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((host, port))
+        # server_socket.settimeout(1)
+        server_socket.listen(5)
+        print "Listening on port %s" % port
 
         while not self.stoprequest.isSet():
             
-            try:
-                client, address = s.accept() 
-                data = client.recv(size) 
+            rr, rw, err = select.select([server_socket], [], [], 1)
+            if rr:
 
-                print data
-                
-                if data: 
-                    client.send(data) 
-                client.close()
-            except (socket.timeout, socket.error) as e:
-                print e
+                sockfd, addr = server_socket.accept()
+                data = sockfd.recv(1024)
+                if data:
+                    self.messageQueue.put(data)
+                else:
+                    sockfd.close()
 
     def join(self, timeout=None):
         print "Leaving service thread"
         self.stoprequest.set()
         super(ServiceThread, self).join(timeout)
 
+def sigint_handler(signal,frame):
+        print("Caught ctrl-C; shutting down.")
+        panelThread.join()
+        serviceThread.join()
+        panels[0].setRelay(False)
+        led_panel.shutdown()
+        sys.exit(0)
 
 if __name__=="__main__":
 
@@ -111,26 +135,39 @@ if __name__=="__main__":
     panelThread = PanelThread(bitmapQueue=bitmapQueue)
 
     messageQueue = Queue.Queue()
+
     serviceThread = ServiceThread(messageQueue=messageQueue)
+    serviceThread.daemon = True
+    serviceThread.start()
     
-    def sigint_handler(signal,frame):
-        print("Caught ctrl-C; shutting down.")
-        panelThread.join()
-        serviceThread.join()
-        panels[0].setRelay(False)
-        led_panel.shutdown()
-        sys.exit(0)
     signal.signal(signal.SIGINT,sigint_handler)
 
     panelThread.start()
-    serviceThread.start()
 
     while True:
 
-        bitmapQueue.put(render_time_bitmap())
+        try:
+            data = messageQueue.get(True, 0)
+            print "Got data to scroll: %s" % data
+            messagesToScroll.append(data)
+            mode = MODE_MESSAGE
+
+        except Queue.Empty:
+            pass
+
+        if mode == MODE_TIME:
+            bitmapQueue.put(render_time_bitmap())
+        elif mode == MODE_MESSAGE:
+            bitmapQueue.put(render_message())
+
+
+
         time.sleep(0.1)
 
-    panelThread.join()
+        
+
+
+    # panelThread.join()
 
     panels[0].setRelay(False)
 
