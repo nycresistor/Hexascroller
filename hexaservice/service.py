@@ -33,16 +33,19 @@ class MessageUnit():
         self.priority = 1
         self.xOffset = 120
         self.txtimg = None
-        self.scrollSpeed = 0.05
+        self.scrollSpeed = 0
 
     def render_message(self):
         
+        # startTime = time.time()
         if self.txtimg is None:
             self.txtimg = base_font.strImg(self.message)
 
-        img = Image.new("1",(120,7))
-        img.paste(self.txtimg,(self.xOffset,0))
+        img = Image.new("1",(300,7))
+        img.paste(self.txtimg,(0,0))
         bitmap = compile_image(img,0,0)
+
+        # if debug: print "Rendering took %f" % (time.time() - startTime)
         return bitmap
 
     def check_messages(self):
@@ -143,6 +146,7 @@ class PanelThread(threading.Thread):
                 bitmap = self.bitmapQueue.get(True, 0.05)
                 for j in range(3):
                     panels[j].setCompiledImage(bitmap)
+                    # if (debug): time.sleep(0.02)
         
             except Queue.Empty:
                 continue
@@ -230,6 +234,10 @@ if __name__=="__main__":
             continue
         
         bitmapQueue.put(bitmap)
+
+    # for x in xrange(120, -120, -1):
+    #     for panel in panels:
+    #         panel.setMessage("test", x)
 
     panelThread.join()
     serviceThread.join()
