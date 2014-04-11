@@ -4,6 +4,7 @@ import serial
 import sys
 import struct
 import random
+import os
 
 CC_TEXT = 0xA1
 CC_BITMAP = 0xA2
@@ -85,6 +86,7 @@ class Panel:
 
     def setMessage(self, message, x =0, y =0):
         message = message[:120]        
+        if x < -128: x = -128
         cmd = struct.pack("bb",x,y)+message
         self.command(CC_TEXT,cmd,0)
 
@@ -106,25 +108,20 @@ class Panel:
 panels = [None]*3
 
 def init(debug = False):
-    for port_num in range(0,3):
-
-        if debug: 
+    if debug: 
+    	for port_num in range(0,3):
             port = 9990 + port_num
             p = Panel(port_num)
             p.open(port)
+            panels[p.getID()] = p
 
-        else: 
-            name = "/dev/ttyACM{0}".format(port_num)
-            p = Panel()
-            p.open(name)
-        
-        panels[p.getID()] = p
+    else: 
+    	for _, _, filenames in os.walk('/dev/serial/by-path/'):
+        	for path in filenames:
+	        	p = Panel()
+	        	p.open('/dev/serial/by-path/%s' % path)
+	        	panels[p.getID()] = p
 
 def shutdown():    
     for p in panels:
         p.close()
-
-
-
-
-

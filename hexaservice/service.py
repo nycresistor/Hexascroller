@@ -17,11 +17,23 @@ debug = False
 host = ''
 port = 50000
 
-bitmapGeneratorUnits = []
+generatorUnits = []
 unitQueue = []
 
 defaultUnitNum = 0 # first unit in bitmapGeneratorUnits
 currentUnitNum = 0
+
+messageLoops = 3
+
+class ThingToDisplay():
+	bitmap = 0
+	text = 1
+
+	def __init__(self, thingType, thing, x=0, y=0):
+		self.thingType = thingType
+		self.thing = thing
+		self.x = x
+		self.y = y
 
 class MessageUnit():
     def __init__(self, messageQueue):
@@ -33,24 +45,31 @@ class MessageUnit():
         self.priority = 1
         self.xOffset = 120
         self.txtimg = None
-        self.scrollSpeed = 0
+        self.scrollSpeed = 0.04
+        self.loops = 0
 
     def render_message(self):
         
-        # startTime = time.time()
-        if self.txtimg is None:
-            self.txtimg = base_font.strImg(self.message)
+        # self.startTime = time.time()
+        # if self.txtimg is None:
+        #     self.txtimg = base_font.strImg(self.message)
 
-        img = Image.new("1",(300,7))
-        img.paste(self.txtimg,(0,0))
-        bitmap = compile_image(img,0,0)
+        # img = Image.new("1",(300,7))
+        # img.paste(self.txtimg,(self.xOffset,0))
+        # bitmap = ThingToDisplay(ThingToDisplay.bitmap, compile_image(img,0,0))
+
+        thing = ThingToDisplay(ThingToDisplay.text, self.message, self.xOffset, 0)
 
         # if debug: print "Rendering took %f" % (time.time() - startTime)
-        return bitmap
+        return thing
 
     def check_messages(self):
         try:
             data = self.messageQueue.get(True, 0)
+            print len(data)
+            if len(data) > 36:
+            	print "Data too long: %s (%s)" % (data, len(data))
+            	return
             print "Got data to scroll: %s" % data
             return data
 
@@ -67,22 +86,30 @@ class MessageUnit():
             self.cleanup()
             return
 
-        bitmap = self.render_message()
-
         self.xOffset -= 1
 
         time.sleep(self.scrollSpeed)
 
-        return bitmap
+        thing = self.render_message()
+
+        return thing
 
     def done(self):
         # if time.time() - self.startTime > self.timeout:
         #     return True
 
-        if self.txtimg is None: return False
-        if self.xOffset < -self.txtimg.size[0]:
-            return True
+        # if self.txtimg is None: return False
+        # if self.xOffset < -self.txtimg.size[0]:
+        #     return True
 
+        if self.xOffset < -127:
+            if self.loops == messageLoops:
+                self.loops = 0
+                return True
+            else:
+                self.loops += 1
+                self.xOffset = 120
+        return False
 
     def cleanup(self):
         self.message = None
@@ -119,7 +146,7 @@ class TimeUnit():
         txt2img = base_font.strImg(bmsg)
         img.paste(txt2img,(62,0))
         img.paste(base_font.strImg(".beats"),(93,0))
-        bitmap = compile_image(img,0,0)
+        bitmap = ThingToDisplay(ThingToDisplay.bitmap, compile_image(img,0,0))
 
         return bitmap
 
@@ -134,19 +161,25 @@ class TimeUnit():
         return False
 
 class PanelThread(threading.Thread):
-    def __init__(self, bitmapQueue):
+    def __init__(self, stuffToDisplay):
         super(PanelThread, self).__init__()
-        self.bitmapQueue = bitmapQueue
+        self.stuffToDisplay = stuffToDisplay
         self.stoprequest = threading.Event()
 
     def run(self):
 
         while not self.stoprequest.isSet():
+            
             try:
-                bitmap = self.bitmapQueue.get(True, 0.05)
-                for j in range(3):
-                    panels[j].setCompiledImage(bitmap)
-                    # if (debug): time.sleep(0.02)
+                thingToDisplay = self.stuffToDisplay.get(True, 0.05)
+
+                if thingToDisplay.thingType == ThingToDisplay.bitmap:
+                    for j in range(3):
+                        panels[j].setCompiledImage(thingToDisplay.thing)
+                        if (debug): time.sleep(0.01)
+                elif thingToDisplay.thingType == ThingToDisplay.text:
+                    for j in range(3):
+	                    panels[j].setMessage(thingToDisplay.thing, thingToDisplay.x, thingToDisplay.y)
         
             except Queue.Empty:
                 continue
@@ -175,9 +208,13 @@ class ServiceThread(threading.Thread):
             if rr:
 
                 sockfd, addr = server_socket.accept()
+                sockfd.send("Enter a message to send. 36 chars max.\n")
                 data = sockfd.recv(1024)
                 if data:
-                    self.messageQueue.put(data)
+                    if len(data) > 36:
+                        sockfd.send("The message is too long! What's wrong with you?\n")
+                    else:
+                    	self.messageQueue.put(data)
                 sockfd.close()
 
     def join(self, timeout=None):
@@ -201,11 +238,10 @@ if __name__=="__main__":
     led_panel.init(debug)
     panels[0].setRelay(True)
 
-    bitmapQueue = Queue.Queue()
-    panelThread = PanelThread(bitmapQueue=bitmapQueue)
+    stuffToDisplay = Queue.Queue()
+    panelThread = PanelThread(stuffToDisplay=stuffToDisplay)
 
     messageQueue = Queue.Queue()
-
     serviceThread = ServiceThread(messageQueue=messageQueue)
     serviceThread.daemon = True
     serviceThread.start()
@@ -214,8 +250,8 @@ if __name__=="__main__":
 
     panelThread.start()
 
-    bitmapGeneratorUnits.append(TimeUnit())
-    bitmapGeneratorUnits.append(MessageUnit(messageQueue))
+    generatorUnits.append(TimeUnit())
+    generatorUnits.append(MessageUnit(messageQueue))
 
     currentUnit = TimeUnit()
 
@@ -223,17 +259,20 @@ if __name__=="__main__":
 
         bitmap = None
 
-        for unit in bitmapGeneratorUnits:
+        for unit in generatorUnits:
             if unit.waiting() and unit.priority < currentUnit.priority:
+                print "%s ready" % unit
                 currentUnit = unit
                 currentUnit.begin()
 
-        bitmap = currentUnit.run()
-        if bitmap is None:
+        thingToDisplay = currentUnit.run()
+        if thingToDisplay is None:
             currentUnit = TimeUnit()
             continue
         
-        bitmapQueue.put(bitmap)
+        stuffToDisplay.put(thingToDisplay)
+
+
 
     # for x in xrange(120, -120, -1):
     #     for panel in panels:
