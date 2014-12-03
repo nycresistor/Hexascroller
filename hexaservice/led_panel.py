@@ -120,10 +120,13 @@ def init(debug = False):
         for candidate in glob.glob('/dev/ttyACM*'):
             p = Panel()
             try:
+                print("Opening candidate {}".format(candidate))
                 p.open(candidate)
                 panels[p.getID()] = p
+                print("{} succeeded".format(candidate))
             except:
                 p.close()
+                print("{} failed".format(candidate))
 
 def shutdown():    
     for p in panels:
