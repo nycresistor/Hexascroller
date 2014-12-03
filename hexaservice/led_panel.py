@@ -46,8 +46,11 @@ class Panel:
             self.serialPort = serial.Serial(portName, baud, timeout=0.5)
             try:
                 self.serialPort.open()
+            except serial.serialutil.SerialException as se:
+                sys.stderr.write("Serial port autoopened, probably ok.\n")
             except serial.SerialException as e:
                 sys.stderr.write("Could not open serial port %s: %s\n" % (self.serialPort.portstr, e))
+
 
     def command(self,command,payload,expected):
         if self.debug: 
@@ -104,21 +107,23 @@ class Panel:
 
 
 panels = [None]*3
+import glob
 
 def init(debug = False):
-    for port_num in range(0,3):
-
-        if debug: 
+    if debug: 
+        for port_num in range(0,3):
             port = 9990 + port_num
             p = Panel(port_num)
             p.open(port)
 
-        else: 
-            name = "/dev/ttyACM{0}".format(port_num)
+    else: 
+        for candidate in glob.glob('/dev/ttyACM*'):
             p = Panel()
-            p.open(name)
-        
-        panels[p.getID()] = p
+            try:
+                p.open(candidate)
+                panels[p.getID()] = p
+            except:
+                p.close()
 
 def shutdown():    
     for p in panels:
