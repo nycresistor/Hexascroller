@@ -245,7 +245,7 @@ void setup() {
   OCR3A = 200;
 
   COMM_PORT.begin(9600);
-
+  COMM_PORT.setTimeout(90);
   ACC_PORT.begin(9600);
   
   b.erase();
@@ -301,34 +301,26 @@ static int yoff = 0;
 static int frames = 0;
 const int scroll_delay = 200;
 
-static int curCmd = 0;
-static int cmdLen = -1;
-static char command[CMD_SIZE+1];
-static int cmdIdx = 0;
+static uint8_t cmd_code = 0;
+static uint8_t pl_sz = 0;
+static char pl[CMD_SIZE+1];
 
 void loop() {
-    int nextChar = COMM_PORT.read();
-    if (nextChar != -1) {
-      // if not in current command...
-      if (curCmd == 0) {
-        if ((nextChar & 0xA0) == 0xA0) {
-          curCmd = nextChar;
-          cmdLen = -1;
-        }
-      } else if (cmdLen == -1) {
-        cmdLen = nextChar;
-        cmdIdx = 0;
-      } else {
-        command[cmdIdx++] = nextChar;
+    // read command
+    if (Serial.available() > 0) {
+      cmd_code = COMM_PORT.read();
+      if (COMM_PORT.readBytes((char*)&pl_sz,1) != 1) { fail(&cmd_code,1); return; }
+      if (pl_sz > 0) {
+        if (pl_sz > CMD_SIZE) pl_sz = CMD_SIZE;
+        if (COMM_PORT.readBytes(pl,pl_sz) != pl_sz) { fail(&cmd_code,1); return; }
       }
-      if (curCmd != 0 && cmdIdx == cmdLen) {
-        switch(curCmd) {
+      switch(cmd_code) {
           case 0xB0: // clear buffer
             b.erase();
             succeed();
             break;
           case 0xB1: // add text
-            b.writeNStr(command+2,cmdLen-2,command[0],command[1]);
+            b.writeNStr(pl+2,pl_sz-2,pl[0],pl[1]);
             succeed();
             break;
           case 0xB2: // flip
@@ -337,7 +329,7 @@ void loop() {
             break;
           case 0xA1: // text
             b.erase();
-            b.writeNStr(command+2,cmdLen-2,command[0],command[1]);
+            b.writeNStr(pl+2,pl_sz-2,pl[0],pl[1]);
             b.flip();
             succeed();
             break;
@@ -346,14 +338,14 @@ void loop() {
               uint8_t* buffer = b.getBuffer();
               b.erase();
               for (uint8_t i = 0; i < columns; i++) {
-                buffer[i] = command[i];
+                buffer[i] = pl[i];
               }
               b.flip();
               succeed();
             }
             break;
           case 0xA3: // set ID
-            EEPROM.write(0,command[0]);
+            EEPROM.write(0,pl[0]);
             succeed();
             break;
           case 0xA4: // get ID
@@ -364,23 +356,21 @@ void loop() {
             break;
           case 0xA5: // write to accessort uart
             {
-              for (int i = 0; i < cmdLen; i++) {
-                ACC_PORT.write(command[i]);
+              for (int i = 0; i < pl_sz; i++) {
+                ACC_PORT.write(pl[i]);
               }
             }
             succeed();
             break;
           case 0xA6: // turn on/off relay
-            setRelay(command[0] != 0);
+            setRelay(pl[0] != 0);
             succeed();
             break;
           default:
-            fail((const uint8_t*)&curCmd,1);
+            fail((const uint8_t*)&cmd_code,1);
             break;
-        }
-        curCmd = 0;
-      }
     }
+  }
 }
 
 #define CLOCK_BITS 1
