@@ -275,12 +275,15 @@ enum {
   RSP_ERROR = 1
 };
 
+#define MAX_RSP 8
 void response(uint8_t code, const uint8_t* payload, uint8_t psize) {
-  COMM_PORT.write(code);
-  COMM_PORT.write(psize);
+  static uint8_t rsp[MAX_RSP];
+  rsp[0] = code;
+  rsp[1] = psize;
   for (int i = 0; i < psize; i++) {
-    COMM_PORT.write(payload[i]);
+    rsp[i+2] = payload[i];
   }
+  COMM_PORT.write(rsp,psize+2);
 }
 
 void fail(const uint8_t* payload = NULL, uint8_t psize = 0) {

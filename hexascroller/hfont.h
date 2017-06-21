@@ -3,6 +3,6 @@
 
 #include <avr/pgmspace.h>
 
-extern uint8_t charData[] PROGMEM;
+extern const uint8_t charData[] PROGMEM;
 
 #endif
