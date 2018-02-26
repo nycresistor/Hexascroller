@@ -51,7 +51,9 @@ if __name__=="__main__":
     if len(sys.argv) > 1 and sys.argv[1] == 'debug':
         debug = True
 
-    led_panel.init(debug)
+    if not led_panel.init(debug):
+	print("Could not find all three panels; aborting.")
+	sys.exit(0)
     panels[0].setRelay(True)
     
     def sigint_handler(signal,frame):
@@ -67,9 +69,7 @@ if __name__=="__main__":
 
         for j in range(3):
             panels[j].setCompiledImage(bitmap)
-        
-        time.sleep(0.10)
-
+        time.sleep(0.06) 
     panels[0].setRelay(False)
 
     led_panel.shutdown()

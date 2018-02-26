@@ -3,7 +3,7 @@ Description=Hexascroller
 After=syslog.target
 
 [Service]
-WorkingDirectory=/root/Hexascroller/hexaservice
+WorkingDirectory=/home/pi/Hexascroller/hexaservice
 ExecStart=/usr/bin/python2 ./service.py
 Restart=always
 

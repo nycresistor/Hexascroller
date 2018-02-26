@@ -65,12 +65,17 @@ class Panel:
             return
 
         l = len(payload)
-        self.serialPort.write(struct.pack("BB",command,l))
+        packet = struct.pack("BB",command,l)
         if l > 0:
-            self.serialPort.write(payload)
+            packet = packet + payload
+        self.serialPort.write(packet)
         rsp = self.serialPort.read(2)
         if len(rsp) < 2 or ord(rsp[0]) != 0:
-            print("Error on command {0}".format(command))
+            #print("Error on panel {1} command {0}".format(command,self.id))
+            if len(rsp) == 2:
+                epl = ord(rsp[1])
+                if epl > 0: rsp = rsp + self.serialPort.read(epl)
+            #print("Rsp length {0}, {1}".format(len(rsp),map(ord,rsp)))
             return ""
         l = ord(rsp[1])
         rpay = self.serialPort.read(l)
@@ -102,12 +107,14 @@ class Panel:
         if self.debug: return self.id
 
         v = self.command(CC_GET_ID,"",1)
-        id = ord(v[0])
-        return id
+        self.id = ord(v[0])
+	print("ID'd panel {0}".format(self.id))
+        return self.id
 
 
 panels = [None]*3
 import glob
+import time
 
 def init(debug = False):
     if debug: 
@@ -115,6 +122,8 @@ def init(debug = False):
             port = 9990 + port_num
             p = Panel(port_num)
             p.open(port)
+            time.sleep(0.1)
+        return true
 
     else: 
         for candidate in glob.glob('/dev/ttyACM*'):
@@ -127,6 +136,7 @@ def init(debug = False):
             except:
                 p.close()
                 print("{} failed".format(candidate))
+        return reduce(lambda a,b: a & (b != None), panels, True)
 
 def shutdown():    
     for p in panels:
