@@ -1,6 +1,6 @@
 
 #include "hfont.h"
-uint8_t charData[] PROGMEM = {
+const uint8_t charData[] PROGMEM = {
     0b00000000,
     0b00000000,
     0b00000000,
