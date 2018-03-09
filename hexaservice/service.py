@@ -45,6 +45,7 @@ class PanelThread(threading.Thread):
 class ServiceThread:
     pass
 
+running = True
 
 if __name__=="__main__":
 
@@ -57,16 +58,20 @@ if __name__=="__main__":
     panels[0].setRelay(True)
     
     def sigint_handler(signal,frame):
+        global running
         print("Caught ctrl-C; shutting down.")
-        panels[0].setRelay(False)
-        led_panel.shutdown()
-        sys.exit(0)
+        running = False
+
     signal.signal(signal.SIGINT,sigint_handler)
 
-    while True:
-        
-        bitmap = render_time_bitmap()
+    def sigterm_handler(signal,frame):
+        global running
+        running = False
 
+    signal.signal(signal.SIGTERM,sigterm_handler)
+
+    while running:
+        bitmap = render_time_bitmap()
         for j in range(3):
             panels[j].setCompiledImage(bitmap)
         time.sleep(0.06) 
