@@ -4,6 +4,7 @@ import serial
 import sys
 import struct
 import random
+import functools
 
 CC_TEXT = 0xA1
 CC_BITMAP = 0xA2
@@ -38,7 +39,7 @@ class Panel:
     def open(self,portName,baud=9600):
         if self.debug: 
             import socket            
-            print("Opening UDP socket to localhost : {}".format(portName))
+            print("Opening UDP socket to localhost : -{}-".format(portName))
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.port = portName
 
@@ -47,7 +48,7 @@ class Panel:
             try:
                 self.serialPort.open()
             except serial.serialutil.SerialException as se:
-                sys.stderr.write("Serial port autoopened, probably ok.\n")
+                sys.stderr.write("Serial port autoopened, probably ok. -{}-\n".format(se))
             except serial.SerialException as e:
                 sys.stderr.write("Could not open serial port {}: {}\n".format(self.serialPort.portstr, e))
 
@@ -136,7 +137,7 @@ def init(debug = False):
             except:
                 p.close()
                 print("{} failed".format(candidate))
-        return reduce(lambda a,b: a & (b != None), panels, True)
+        return functools.reduce(lambda a,b: a & (b != None), panels, True)
 
 def shutdown():    
     for p in panels:

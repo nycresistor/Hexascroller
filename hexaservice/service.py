@@ -7,6 +7,8 @@ import time
 import signal
 import sys
 import threading
+import asyncio
+import os
 
 debug = False
 
@@ -45,7 +47,43 @@ class PanelThread(threading.Thread):
 class ServiceThread:
     pass
 
+hlock = asyncio.Lock()
 running = True
+powered = True
+
+STOP = asyncio.Event()
+
+TOPIC_PRE = '/hexascroller/power'
+
+def on_connect(client, flags, rc):
+    client.subscribe(TOPIC_PRE+'/command', qos=0)
+
+def on_message(client, topic, payload, qos):
+    global powered
+    powered = payload == b'ON'
+    hlock.acquire()
+    panels[0].setRelay(powered)
+    hlock.release()
+
+async def mqtt_main(broker_host, token):
+    client = MQTTClient("client-id")
+    client.on_connect = on_connect
+    client.on_message = on_message
+    await client.connect(broker_host)
+    await STOP.wait()
+    await client.disconnect()
+
+def mqtt_top():
+    loop = asyncio.get_event_loop()
+
+    host = 'automation.local'
+    token = os.environ.get('FLESPI_TOKEN')
+
+    loop.add_signal_handler(signal.SIGINT, ask_exit)
+    loop.add_signal_handler(signal.SIGTERM, ask_exit)
+
+    loop.run_until_complete(mqtt_main(host, token))
+
 
 if __name__=="__main__":
 
@@ -53,28 +91,38 @@ if __name__=="__main__":
         debug = True
 
     if not led_panel.init(debug):
-	print("Could not find all three panels; aborting.")
-	sys.exit(0)
+        print("Could not find all three panels; aborting.")
+    sys.exit(0)
     panels[0].setRelay(True)
     
     def sigint_handler(signal,frame):
         global running
         print("Caught ctrl-C; shutting down.")
         running = False
+        ask_exit(signal,frame)
 
     signal.signal(signal.SIGINT,sigint_handler)
 
     def sigterm_handler(signal,frame):
         global running
         running = False
+        ask_exit(signal,frame)
 
     signal.signal(signal.SIGTERM,sigterm_handler)
 
+    t = threading.Thread(target=mqtt_top)
+    t.start()
+
     while running:
-        bitmap = render_time_bitmap()
-        for j in range(3):
-            panels[j].setCompiledImage(bitmap)
-        time.sleep(0.06) 
+        if powered:
+            bitmap = render_time_bitmap()
+            hlock.acquire()
+            for j in range(3):
+                panels[j].setCompiledImage(bitmap)
+            hlock.release()
+            time.sleep(0.06) 
+        else:
+            time.sleep(0.25)
     panels[0].setRelay(False)
 
     led_panel.shutdown()
