@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import led_panel
 from led_panel import panels, compile_image
 from fontutil import base_font

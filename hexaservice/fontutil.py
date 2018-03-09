@@ -1,4 +1,4 @@
-#!/usr/src/python
+#!/usr/src/python3
 
 from PIL import Image, ImageDraw, ImageChops
 

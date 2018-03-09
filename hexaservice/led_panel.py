@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import serial
 import sys
@@ -38,7 +38,7 @@ class Panel:
     def open(self,portName,baud=9600):
         if self.debug: 
             import socket            
-            print "Opening UDP socket to localhost : %s" % portName
+            print("Opening UDP socket to localhost : {}".format(portName))
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.port = portName
 
@@ -49,17 +49,17 @@ class Panel:
             except serial.serialutil.SerialException as se:
                 sys.stderr.write("Serial port autoopened, probably ok.\n")
             except serial.SerialException as e:
-                sys.stderr.write("Could not open serial port %s: %s\n" % (self.serialPort.portstr, e))
+                sys.stderr.write("Could not open serial port {}: {}\n".format(self.serialPort.portstr, e))
 
 
     def command(self,command,payload,expected):
         if self.debug: 
-            #print struct.unpack("B", payload)
+            #print(struct.unpack("B", payload))
             # for y in range(0, 7):
             #     for byte in payload[y * 15 : (y * 15) + 15]:
             #         print hex(ord(byte)),
-            #     print
-            # print
+            #     print("")
+            # print("")
             payload = chr(self.id) + payload
             self.sock.sendto(payload, ("127.0.0.1", self.port))
             return
@@ -108,7 +108,7 @@ class Panel:
 
         v = self.command(CC_GET_ID,"",1)
         self.id = ord(v[0])
-	print("ID'd panel {0}".format(self.id))
+        print("ID'd panel {0}".format(self.id))
         return self.id
 
 
