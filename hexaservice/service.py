@@ -7,8 +7,8 @@ import time
 import signal
 import sys
 import threading
-import asyncio
 import os
+from gmqtt import Client as MQTTClient
 
 debug = False
 
@@ -40,18 +40,9 @@ def render_time_bitmap():
 
     return bitmap
 
-class PanelThread(threading.Thread):
-    def __init__(self, panel):
-        pass
-
-class ServiceThread:
-    pass
-
-hlock = asyncio.Lock()
+hlock = threading.Lock()
 running = True
 powered = True
-
-STOP = asyncio.Event()
 
 TOPIC_PRE = '/hexascroller/power'
 
@@ -65,26 +56,35 @@ def on_message(client, topic, payload, qos):
     panels[0].setRelay(powered)
     hlock.release()
 
-async def mqtt_main(broker_host, token):
+
+def mqtt_thread():
+    host = 'automation.local'
+    token = os.environ.get('FLESPI_TOKEN')
     client = MQTTClient("client-id")
     client.on_connect = on_connect
     client.on_message = on_message
-    await client.connect(broker_host)
-    await STOP.wait()
-    await client.disconnect()
-
-def mqtt_top():
-    loop = asyncio.get_event_loop()
-
-    host = 'automation.local'
-    token = os.environ.get('FLESPI_TOKEN')
-
-    loop.add_signal_handler(signal.SIGINT, ask_exit)
-    loop.add_signal_handler(signal.SIGTERM, ask_exit)
-
-    loop.run_until_complete(mqtt_main(host, token))
+    client.connect(broker_host)
+    while True:
+        time.sleep(1)
 
 print("NAME {}".format(__name__))
+
+def panel_thread():
+    global running
+    global powered
+    while running:
+        if powered:
+            bitmap = render_time_bitmap()
+            hlock.acquire()
+            for j in range(3):
+                panels[j].setCompiledImage(bitmap)
+            hlock.release()
+            time.sleep(0.06) 
+        else:
+            time.sleep(0.25)
+    panels[0].setRelay(False)
+
+    led_panel.shutdown()
 
 if __name__=="__main__":
     if len(sys.argv) > 1 and sys.argv[1] == 'debug':
@@ -109,20 +109,8 @@ if __name__=="__main__":
         ask_exit(signal,frame)
 
     signal.signal(signal.SIGTERM,sigterm_handler)
-
-    t = threading.Thread(target=mqtt_top)
-    print("Is running: {} powered: {}".format(running, powered))
+    #tm = threading.Thread(target=mqtt_thread)
+    t = threading.Thread(target=panel_thread)
     t.start()
-    while running:
-        if powered:
-            bitmap = render_time_bitmap()
-            hlock.acquire()
-            for j in range(3):
-                panels[j].setCompiledImage(bitmap)
-            hlock.release()
-            time.sleep(0.06) 
-        else:
-            time.sleep(0.25)
-    panels[0].setRelay(False)
-
-    led_panel.shutdown()
+    #tm.start()    
+    t.join()
