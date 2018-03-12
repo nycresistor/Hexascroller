@@ -4,7 +4,7 @@ After=syslog.target
 
 [Service]
 WorkingDirectory=/home/pi/Hexascroller/hexaservice
-ExecStart=/usr/bin/python2 ./service.py
+ExecStart=/usr/bin/python3 ./service.py
 Restart=always
 
 [Install]
