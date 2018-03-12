@@ -39,7 +39,7 @@ class Panel:
     def open(self,portName,baud=9600):
         if self.debug: 
             import socket            
-            print("Opening UDP socket to localhost : -{}-".format(portName))
+            print("Opening UDP socket to localhost : {}".format(portName))
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.port = portName
 
@@ -61,7 +61,7 @@ class Panel:
             #         print hex(ord(byte)),
             #     print("")
             # print("")
-            payload = chr(self.id) + payload
+            payload = bytes([self.id]) + payload
             self.sock.sendto(payload, ("127.0.0.1", self.port))
             return
 
@@ -71,14 +71,14 @@ class Panel:
             packet = packet + payload
         self.serialPort.write(packet)
         rsp = self.serialPort.read(2)
-        if len(rsp) < 2 or ord(rsp[0]) != 0:
+        if len(rsp) < 2 or rsp[0] != 0:
             #print("Error on panel {1} command {0}".format(command,self.id))
             if len(rsp) == 2:
-                epl = ord(rsp[1])
+                epl = rsp[1]
                 if epl > 0: rsp = rsp + self.serialPort.read(epl)
-            #print("Rsp length {0}, {1}".format(len(rsp),map(ord,rsp)))
+            #print("Rsp length {0}, {1}".format(len(rsp),rsp))
             return ""
-        l = ord(rsp[1])
+        l = rsp[1]
         rpay = self.serialPort.read(l)
         return rpay
 
@@ -108,7 +108,7 @@ class Panel:
         if self.debug: return self.id
 
         v = self.command(CC_GET_ID,"",1)
-        self.id = ord(v[0])
+        self.id = v[0]
         print("ID'd panel {0}".format(self.id))
         return self.id
 
@@ -134,7 +134,7 @@ def init(debug = False):
                 p.open(candidate)
                 panels[p.getID()] = p
                 print("{} succeeded".format(candidate))
-            except:
+            except Exception as e:
                 p.close()
                 print("{} failed".format(candidate))
         return functools.reduce(lambda a,b: a & (b != None), panels, True)
