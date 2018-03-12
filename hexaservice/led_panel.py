@@ -14,7 +14,7 @@ CC_UART = 0xA5
 CC_RELAY = 0xA6
 
 def compile_image(img, x=0, y=0):
-    bitmap = ''
+    bitmap = b''
     width = min(img.size[0]-x,120)
     height = min(7,img.size[1]-y)
 
@@ -48,7 +48,7 @@ class Panel:
             try:
                 self.serialPort.open()
             except serial.serialutil.SerialException as se:
-                sys.stderr.write("Serial port autoopened, probably ok. -{}-\n".format(se))
+                sys.stderr.write("Serial port autoopened, probably ok. {}\n".format(se))
             except serial.SerialException as e:
                 sys.stderr.write("Could not open serial port {}: {}\n".format(self.serialPort.portstr, e))
 

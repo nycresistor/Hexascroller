@@ -84,15 +84,15 @@ def mqtt_top():
 
     loop.run_until_complete(mqtt_main(host, token))
 
+print("NAME {}".format(__name__))
 
 if __name__=="__main__":
-
     if len(sys.argv) > 1 and sys.argv[1] == 'debug':
         debug = True
 
     if not led_panel.init(debug):
         print("Could not find all three panels; aborting.")
-    sys.exit(0)
+        sys.exit(0)
     panels[0].setRelay(True)
     
     def sigint_handler(signal,frame):
@@ -111,8 +111,8 @@ if __name__=="__main__":
     signal.signal(signal.SIGTERM,sigterm_handler)
 
     t = threading.Thread(target=mqtt_top)
+    print("Is running: {} powered: {}".format(running, powered))
     t.start()
-
     while running:
         if powered:
             bitmap = render_time_bitmap()
