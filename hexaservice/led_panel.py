@@ -124,7 +124,7 @@ def init(debug = False):
             p = Panel(port_num)
             p.open(port)
             time.sleep(0.1)
-        return true
+        return True
 
     else: 
         for candidate in glob.glob('/dev/ttyACM*'):
