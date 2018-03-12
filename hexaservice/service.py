@@ -8,7 +8,7 @@ import signal
 import sys
 import threading
 import os
-from gmqtt import Client as MQTTClient
+import paho.mqtt.client as mqtt
 
 debug = False
 
@@ -44,28 +44,31 @@ hlock = threading.Lock()
 running = True
 powered = True
 
-TOPIC_PRE = '/hexascroller/power'
+TOPIC_PRE = 'hexascroller/power'
 
-def on_connect(client, flags, rc):
-    client.subscribe(TOPIC_PRE+'/command', qos=0)
+def on_connect(client, userdata, flags, rc):
+    print("CONNECTED")
+    client.subscribe(TOPIC_PRE+'/command')
 
-def on_message(client, topic, payload, qos):
+def on_message(client, userdata, msg):
     global powered
-    powered = payload == b'ON'
+    print("MESSAGE: {}".format(msg.payload))
+    powered = msg.payload == b'ON'
     hlock.acquire()
     panels[0].setRelay(powered)
     hlock.release()
 
 
 def mqtt_thread():
+    global running
     host = 'automation.local'
     token = os.environ.get('FLESPI_TOKEN')
-    client = MQTTClient("client-id")
+    client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
-    client.connect(broker_host)
-    while True:
-        time.sleep(1)
+    client.connect(host,1883,60)
+    while running:
+        client.loop()
 
 print("NAME {}".format(__name__))
 
@@ -99,18 +102,16 @@ if __name__=="__main__":
         global running
         print("Caught ctrl-C; shutting down.")
         running = False
-        ask_exit(signal,frame)
 
     signal.signal(signal.SIGINT,sigint_handler)
 
     def sigterm_handler(signal,frame):
         global running
         running = False
-        ask_exit(signal,frame)
 
     signal.signal(signal.SIGTERM,sigterm_handler)
-    #tm = threading.Thread(target=mqtt_thread)
+    tm = threading.Thread(target=mqtt_thread)
     t = threading.Thread(target=panel_thread)
     t.start()
-    #tm.start()    
+    tm.start()    
     t.join()
