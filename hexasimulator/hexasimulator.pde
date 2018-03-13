@@ -26,9 +26,11 @@ boolean stopped;
 long lastRecieved;
 long timeout = 5000; // Turn off draw loop when no data recieved
 
-void setup() {
-
+void settings() {
   size((SEGMENT_WIDTH * PIXEL_SPACING) * 3 + SCREEN_SPACING * 6, PIXEL_SPACING * SEGMENT_HEIGHT + (SCREEN_SPACING * 2));
+}
+
+void setup() {
   frameRate(60);
 
   imageQueue0 = new LinkedBlockingQueue();
