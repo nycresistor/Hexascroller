@@ -1,5 +1,6 @@
 class Segment {
-
+  final static byte CC_RELAY = (byte)0xA6;
+  final static byte CC_BITMAP = (byte)0xA2;
   int num;
   PVector pos;
   byte[] data;
@@ -9,21 +10,28 @@ class Segment {
     this.num = num;
     this.pos = pos;
     this.queue = queue;
-    this.data = new byte[121];
+    this.data = new byte[122];
   }
 
   void draw() {
 
     byte newData[] = (byte[]) this.queue.poll();
     if (newData != null) this.data = newData;
-
+    byte cmd = this.data[0];
+    if (cmd != CC_BITMAP && cmd != CC_RELAY) {
+      return;
+    }
     pushMatrix();
     translate(this.pos.x, this.pos.y);
-
-
+    
     for (int col = 0; col < 120; col++) {
 
-      byte currentByte = this.data[col + 1];
+      byte currentByte = 0;
+      if (cmd == CC_BITMAP) {
+        currentByte = this.data[col + 2];
+      } else if (cmd == CC_RELAY) {
+        currentByte = 0;
+      }
 
       for (int row = 0; row < 8; row++) {
 
@@ -44,4 +52,3 @@ class Segment {
     popMatrix();
   }
 }
-

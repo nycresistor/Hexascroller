@@ -30,6 +30,11 @@ void settings() {
   size((SEGMENT_WIDTH * PIXEL_SPACING) * 3 + SCREEN_SPACING * 6, PIXEL_SPACING * SEGMENT_HEIGHT + (SCREEN_SPACING * 2));
 }
 
+// does processing not do closures? not even interested in finding out
+void wrap0(byte[] data, String ip, int port) { receive(0, data, ip, port); }
+void wrap1(byte[] data, String ip, int port) { receive(1, data, ip, port); }
+void wrap2(byte[] data, String ip, int port) { receive(2, data, ip, port); }
+
 void setup() {
   frameRate(60);
 
@@ -54,35 +59,24 @@ void setup() {
   udp0 = new UDP(this, 9990);
   udp1 = new UDP(this, 9991);
   udp2 = new UDP(this, 9992);
+  // Well, this is clumsy as fuck
+  udp0.setReceiveHandler("wrap0");
+  udp1.setReceiveHandler("wrap1");
+  udp2.setReceiveHandler("wrap2");
   udp0.listen(true);
   udp1.listen(true);
   udp2.listen(true);
 }
 
-void receive(byte[] data, String ip, int port) { 
-  
+void receive(int num, byte[] data, String ip, int port) { 
   // Restart draw loop
   lastRecieved = millis();
   loop(); 
 
-  int num = data[0];
-  //  println("Got " + (data.length - 1) + " from unit " + num);
-
-  if (num > 2 || num < 0) {
-    println("Packet header mismatch. Expected 0 or 1 or 2, got " + num);
-    return;
-  }
-
-  if (data.length != 120 + 1) {
-    println("Packet size mismatch. Expected 121, got " + data.length);
-    return;
-  }
-
   if (queues.get(num).size() > 0) {
-    //    println("Buffer full, dropping frame!");
+    //println("Buffer full, dropping frame!");
     return;
   }
-
 
   try { 
     queues.get(num).put(data);
@@ -110,4 +104,3 @@ void draw() {
     println("Paused.");
   }
 }
-

@@ -44,31 +44,41 @@ hlock = threading.Lock()
 running = True
 powered = True
 
-TOPIC_PRE = 'hexascroller/power'
+TOPIC_PRE = '/hexascroller/power'
 
 def on_connect(client, userdata, flags, rc):
-    print("CONNECTED")
-    client.subscribe(TOPIC_PRE+'/command')
+    #print("CONNECTED")
+    #client.subscribe("$SYS/#")
+    client.publish(TOPIC_PRE+'/state',b'ON',qos=0)
+    client.subscribe(TOPIC_PRE+'/command',qos=0)
+    #print("RV: {}".format(rv))
 
 def on_message(client, userdata, msg):
     global powered
-    print("MESSAGE: {}".format(msg.payload))
+    #print("MESSAGE: {}".format(msg.payload))
     powered = msg.payload == b'ON'
     hlock.acquire()
     panels[0].setRelay(powered)
     hlock.release()
+    client.publish(TOPIC_PRE+'/state',msg.payload)
 
 
 def mqtt_thread():
     global running
+    global debug
     host = 'automation.local'
+    if debug:
+        host = 'localhost'
     token = os.environ.get('FLESPI_TOKEN')
-    client = mqtt.Client()
+    client = mqtt.Client('bogus-id')
+    client.enable_logger()
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect(host,1883,60)
     while running:
         client.loop()
+    client.publish(TOPIC_PRE+"/state",b'OFF',qos=0)
+    client.disconnect()
 
 print("NAME {}".format(__name__))
 

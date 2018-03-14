@@ -54,21 +54,13 @@ class Panel:
 
 
     def command(self,command,payload,expected):
-        if self.debug: 
-            #print(struct.unpack("B", payload))
-            # for y in range(0, 7):
-            #     for byte in payload[y * 15 : (y * 15) + 15]:
-            #         print hex(ord(byte)),
-            #     print("")
-            # print("")
-            payload = bytes([self.id]) + payload
-            self.sock.sendto(payload, ("127.0.0.1", self.port))
-            return
-
         l = len(payload)
         packet = struct.pack("BB",command,l)
         if l > 0:
             packet = packet + payload
+        if self.debug: 
+            self.sock.sendto(packet, ("127.0.0.1", self.port))
+            return
         self.serialPort.write(packet)
         rsp = self.serialPort.read(2)
         if len(rsp) < 2 or rsp[0] != 0:
@@ -89,7 +81,9 @@ class Panel:
     def setRelay(self, on):
         if on:
             self.command(CC_RELAY,struct.pack("B",1),0)
+            print("Relay on")
         else:
+            print("Relay off")
             self.command(CC_RELAY,struct.pack("B",0),0)
 
     def setMessage(self, message, x =0, y =0):
@@ -123,6 +117,7 @@ def init(debug = False):
             port = 9990 + port_num
             p = Panel(port_num)
             p.open(port)
+            panels[port_num] = p
             time.sleep(0.1)
         return True
 
