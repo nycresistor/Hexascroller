@@ -109,12 +109,10 @@ def panel_thread():
     while running:
         if powered:
             if msg_until:
-                msg_offset += 0.5
-                bitmap = render_message_bitmap(message,int(msg_offset))
+                bitmap = render_message_bitmap(message,0)
                 if time.time() > msg_until:
                     msg_until = None
                     message = None
-                    msg_offset = 0.0
             else:
                 bitmap = render_time_bitmap()
             hlock.acquire()
