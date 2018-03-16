@@ -39,9 +39,9 @@ def render_time_bitmap():
     bitmap = compile_image(img,0,0)
     return bitmap
 
-def render_message_bitmap(message, offset):
+def render_message_bitmap(msg, offset):
     "Render the given message with offset into a 2-panel bitmap"
-    txtimg = base_font.strImg(message)
+    txtimg = base_font.strImg(msg)
     img = Image.new("1",(120,7))
     img.paste(txtimg,(offset,0))
     bitmap = compile_image(img,0,0)
@@ -75,8 +75,9 @@ def on_message(client, userdata, msg):
         client.publish(TOPIC_PRE+'/state',msg.payload)
     elif msg.topic == '/hexascroller/notify/message':
         msg_offset = 0
-        message = msg.payload
-        msg_until = time.time() + 10.0
+        message = msg.payload.encode('UTF-8')
+        print("message is {}".format(message))
+        msg_until = time.time() + 30.0
 
 def mqtt_thread():
     global running
