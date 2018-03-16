@@ -76,7 +76,7 @@ def on_message(client, userdata, msg):
     elif msg.topic == '/hexascroller/notify/message':
         msg_offset = 0
         message = msg.payload
-        msg_until = time.clock() + 90.0
+        msg_until = time.time() + 10.0
 
 def mqtt_thread():
     global running
@@ -110,11 +110,11 @@ def panel_thread():
         if powered:
             if msg_until:
                 msg_offset += 0.5
-                if time.clock() > msg_until:
+                bitmap = render_message_bitmap(message,int(msg_offset))
+                if time.time() > msg_until:
                     msg_until = None
                     message = None
                     msg_offset = 0.0
-                bitmap = render_message_bitmap(message,int(msg_offset))
             else:
                 bitmap = render_time_bitmap()
             hlock.acquire()
