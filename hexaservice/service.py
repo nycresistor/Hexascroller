@@ -51,17 +51,25 @@ def on_connect(client, userdata, flags, rc):
     #client.subscribe("$SYS/#")
     client.publish(TOPIC_PRE+'/state',b'ON',qos=0)
     client.subscribe(TOPIC_PRE+'/command',qos=0)
+    client.subscribe('/hexascroller/notify/message',qos=0)
     #print("RV: {}".format(rv))
 
 def on_message(client, userdata, msg):
     global powered
+    global msg_until
+    global msg_offset
+    global message
     #print("MESSAGE: {}".format(msg.payload))
-    powered = msg.payload == b'ON'
-    hlock.acquire()
-    panels[0].setRelay(powered)
-    hlock.release()
-    client.publish(TOPIC_PRE+'/state',msg.payload)
-
+    if msg.topic == '/hexascroller/power/command':
+        powered = msg.payload == b'ON'
+        hlock.acquire()
+        panels[0].setRelay(powered)
+        hlock.release()
+        client.publish(TOPIC_PRE+'/state',msg.payload)
+    elif msg.topic == '/hexascroller/notify/message':
+        msg_offset = 0
+        message = msg.payload
+        msg_until = time.clock() + 90.0
 
 def mqtt_thread():
     global running
@@ -70,7 +78,7 @@ def mqtt_thread():
     if debug:
         host = 'localhost'
     token = os.environ.get('FLESPI_TOKEN')
-    client = mqtt.Client('bogus-id')
+    client = mqtt.Client()
     client.enable_logger()
     client.on_connect = on_connect
     client.on_message = on_message
@@ -82,12 +90,31 @@ def mqtt_thread():
 
 print("NAME {}".format(__name__))
 
+msg_until = None
+msg_offset = 0.0
+message = None
 def panel_thread():
     global running
     global powered
+    global msg_until
+    global msg_offset
+    global message
     while running:
         if powered:
-            bitmap = render_time_bitmap()
+            if msg_until:
+                bitmap = render_message(message,msg_offset)
+                msg_offset += 0.2
+                if time.clock() > msg_until:
+                    msg_until = None
+                    message = None
+                    msg_offset = 0.0
+            hlock.acquire()
+            for j in range(3):
+                off = int(msg_offset) + (j*40)
+                panels[j].setMessage(message, x=off)
+            hlock.release()
+            else:
+                bitmap = render_time_bitmap()
             hlock.acquire()
             for j in range(3):
                 panels[j].setCompiledImage(bitmap)

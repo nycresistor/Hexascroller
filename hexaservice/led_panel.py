@@ -87,7 +87,7 @@ class Panel:
             self.command(CC_RELAY,struct.pack("B",0),0)
 
     def setMessage(self, message, x =0, y =0):
-        message = message[:120]        
+        message = message[:100]        
         cmd = struct.pack("bb",x,y)+message
         self.command(CC_TEXT,cmd,0)
 
