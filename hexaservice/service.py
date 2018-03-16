@@ -75,8 +75,7 @@ def on_message(client, userdata, msg):
         client.publish(TOPIC_PRE+'/state',msg.payload)
     elif msg.topic == '/hexascroller/notify/message':
         msg_offset = 0
-        message = msg.payload.encode('UTF-8')
-        print("message is {}".format(message))
+        message = msg.payload.decode()
         msg_until = time.time() + 30.0
 
 def mqtt_thread():
