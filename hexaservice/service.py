@@ -37,7 +37,14 @@ def render_time_bitmap():
     img.paste(txt2img,(62,0))
     img.paste(base_font.strImg(".beats"),(93,0))
     bitmap = compile_image(img,0,0)
+    return bitmap
 
+def render_message_bitmap(message, offset):
+    "Render the given message with offset into a 2-panel bitmap"
+    txtimg = base_font.strImg(message)
+    img = Image.new("1",(120,7))
+    img.paste(txtimg,(offset,0))
+    bitmap = compile_image(img,0,0)
     return bitmap
 
 hlock = threading.Lock()
@@ -102,24 +109,19 @@ def panel_thread():
     while running:
         if powered:
             if msg_until:
-                msg_offset += 1
+                msg_offset += 0.5
                 if time.clock() > msg_until:
                     msg_until = None
                     message = None
                     msg_offset = 0.0
-                hlock.acquire()
-                for j in range(3):
-                    off = int(msg_offset) - (j*40)
-                    panels[j].setMessage(message, x=off)
-                hlock.release()
-                time.sleep(0.2)
+                bitmap = render_message_bitmap(message,int(msg_offset))
             else:
                 bitmap = render_time_bitmap()
-                hlock.acquire()
-                for j in range(3):
-                    panels[j].setCompiledImage(bitmap)
-                hlock.release()
-                time.sleep(0.06) 
+            hlock.acquire()
+            for j in range(3):
+                panels[j].setCompiledImage(bitmap)
+            hlock.release()
+            time.sleep(0.06) 
         else:
             time.sleep(0.25)
     panels[0].setRelay(False)
