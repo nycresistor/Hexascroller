@@ -102,24 +102,24 @@ def panel_thread():
     while running:
         if powered:
             if msg_until:
-                bitmap = render_message(message,msg_offset)
-                msg_offset += 0.2
+                msg_offset += 1
                 if time.clock() > msg_until:
                     msg_until = None
                     message = None
                     msg_offset = 0.0
-            hlock.acquire()
-            for j in range(3):
-                off = int(msg_offset) + (j*40)
-                panels[j].setMessage(message, x=off)
-            hlock.release()
+                hlock.acquire()
+                for j in range(3):
+                    off = int(msg_offset) - (j*40)
+                    panels[j].setMessage(message, x=off)
+                hlock.release()
+                time.sleep(0.2)
             else:
                 bitmap = render_time_bitmap()
-            hlock.acquire()
-            for j in range(3):
-                panels[j].setCompiledImage(bitmap)
-            hlock.release()
-            time.sleep(0.06) 
+                hlock.acquire()
+                for j in range(3):
+                    panels[j].setCompiledImage(bitmap)
+                hlock.release()
+                time.sleep(0.06) 
         else:
             time.sleep(0.25)
     panels[0].setRelay(False)
