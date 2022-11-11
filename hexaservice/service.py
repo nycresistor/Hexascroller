@@ -81,14 +81,20 @@ def on_message(client, userdata, msg):
 def mqtt_thread():
     global running
     global debug
-    host = 'automation.local'
+    host = os.environ.get('MQTT_BROKER','homeassistant.local')
+    user = os.environ.get('MQTT_USER')
+    pw = os.environ.get('MQTT_PASS')
+
     if debug:
         host = 'localhost'
-    token = os.environ.get('FLESPI_TOKEN')
+    #token = os.environ.get('FLESPI_TOKEN')
     client = mqtt.Client()
     client.enable_logger()
     client.on_connect = on_connect
     client.on_message = on_message
+    if user:
+        print("Logging into MQTT as {}".format(user))
+        client.username_pw_set(user,pw)
     client.connect(host,1883,60)
     while running:
         client.loop()
