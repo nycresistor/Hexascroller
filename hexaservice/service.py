@@ -51,7 +51,7 @@ hlock = threading.Lock()
 running = True
 powered = True
 
-TOPIC_PRE = '/hexascroller/power'
+TOPIC_PRE = 'hexascroller/power'
 
 def on_connect(client, userdata, flags, rc):
     #print("CONNECTED")
