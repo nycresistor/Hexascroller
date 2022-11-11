@@ -69,7 +69,7 @@ def on_message(client, userdata, msg):
     global msg_offset
     global message
     #print("MESSAGE: {}".format(msg.payload))
-    if msg.topic == 'TOPIC_POWER_SET':
+    if msg.topic == TOPIC_POWER_SET:
         powered = msg.payload == b'ON'
         hlock.acquire()
         panels[0].setRelay(powered)
