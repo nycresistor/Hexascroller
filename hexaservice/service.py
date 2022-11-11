@@ -51,15 +51,17 @@ hlock = threading.Lock()
 running = True
 powered = True
 
-TOPIC_PRE = 'hexascroller/power'
+TOPIC_PREFIX = 'hexascroller'
+TOPIC_POWER = TOPIC_PREFIX + '/power'
+TOPIC_POWER_SET = TOPIC_POWER + '/set'
+TOPIC_MESSAGE = TOPIC_PREFIX + '/message'
+AVAILABILITY_TOPIC = TOPIC_PREFIX + '/available'
 
 def on_connect(client, userdata, flags, rc):
-    #print("CONNECTED")
-    #client.subscribe("$SYS/#")
-    client.publish(TOPIC_PRE+'/state',b'ON',qos=0)
-    client.subscribe(TOPIC_PRE+'/command',qos=0)
-    client.subscribe('/hexascroller/notify/message',qos=0)
-    #print("RV: {}".format(rv))
+    client.publish(TOPIC_POWER,b'ON',qos=0)
+    client.publish(AVAILABILITY_TOPIC, "online")
+    client.subscribe(TOPIC_POWER_SET,qos=0)
+    client.subscribe(TOPIC_MESSAGE,qos=0)
 
 def on_message(client, userdata, msg):
     global powered
@@ -67,13 +69,13 @@ def on_message(client, userdata, msg):
     global msg_offset
     global message
     #print("MESSAGE: {}".format(msg.payload))
-    if msg.topic == '/hexascroller/power/command':
+    if msg.topic == 'hexascroller/power/command':
         powered = msg.payload == b'ON'
         hlock.acquire()
         panels[0].setRelay(powered)
         hlock.release()
         client.publish(TOPIC_PRE+'/state',msg.payload)
-    elif msg.topic == '/hexascroller/notify/message':
+    elif msg.topic == 'hexascroller/notify/message':
         msg_offset = 0
         message = msg.payload.decode()
         msg_until = time.time() + 30.0
@@ -87,7 +89,6 @@ def mqtt_thread():
 
     if debug:
         host = 'localhost'
-    #token = os.environ.get('FLESPI_TOKEN')
     client = mqtt.Client()
     client.enable_logger()
     client.on_connect = on_connect
@@ -99,6 +100,7 @@ def mqtt_thread():
     while running:
         client.loop()
     client.publish(TOPIC_PRE+"/state",b'OFF',qos=0)
+    client.publish(AVAILABILITY_TOPIC, "offline")
     client.disconnect()
 
 print("NAME {}".format(__name__))
