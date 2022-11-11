@@ -69,13 +69,13 @@ def on_message(client, userdata, msg):
     global msg_offset
     global message
     #print("MESSAGE: {}".format(msg.payload))
-    if msg.topic == 'hexascroller/power/command':
+    if msg.topic == 'TOPIC_POWER_SET':
         powered = msg.payload == b'ON'
         hlock.acquire()
         panels[0].setRelay(powered)
         hlock.release()
-        client.publish(TOPIC_PRE+'/state',msg.payload)
-    elif msg.topic == 'hexascroller/notify/message':
+        client.publish(TOPIC_POWER,msg.payload)
+    elif msg.topic == TOPIC_MESSAGE:
         msg_offset = 0
         message = msg.payload.decode()
         msg_until = time.time() + 30.0
