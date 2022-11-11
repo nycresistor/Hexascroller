@@ -60,7 +60,7 @@ AVAILABILITY_TOPIC = TOPIC_PREFIX + '/available'
 def on_connect(client, userdata, flags, rc):
     client.publish(TOPIC_POWER,b'ON',qos=0)
     client.publish(AVAILABILITY_TOPIC, "online")
-    client.subscribe(TOPIC_POWER_SET,qos=0)
+            client.subscribe(TOPIC_POWER_SET,qos=0)
     client.subscribe(TOPIC_MESSAGE,qos=0)
 
 def on_message(client, userdata, msg):
