@@ -99,7 +99,7 @@ def mqtt_thread():
     client.connect(host,1883,60)
     while running:
         client.loop()
-    client.publish(TOPIC_PRE+"/state",b'OFF',qos=0)
+    client.publish(TOPIC_POWER,b'OFF',qos=0)
     client.publish(AVAILABILITY_TOPIC, "offline")
     client.disconnect()
 
