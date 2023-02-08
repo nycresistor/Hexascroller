@@ -83,7 +83,7 @@ def on_message(client, userdata, msg):
 def mqtt_thread():
     global running
     global debug
-    host = os.environ.get('MQTT_BROKER','homeassistant.local')
+    host = os.environ.get('MQTT_BROKER','mqttbroker.lan')
     user = os.environ.get('MQTT_USER')
     pw = os.environ.get('MQTT_PASS')
 
