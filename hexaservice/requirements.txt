@@ -1,0 +1,2 @@
+Pillow==9.4.0
+paho-mqtt==1.6.1
