@@ -32,7 +32,7 @@ def render_time_bitmap():
     txtimg = base_font.strImg(msg)
     img = Image.new("1",(120,7))
     img.paste(txtimg,(15,0))
-    bmsg = "{0:03.2f}".format(beats)
+    bmsg = "{0:06.2f}".format(beats)
     txt2img = base_font.strImg(bmsg)
     img.paste(txt2img,(62,0))
     img.paste(base_font.strImg(".beats"),(93,0))
