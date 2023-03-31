@@ -4,7 +4,6 @@ import sys
 import time
 import signal
 import threading
-from typing import Tuple
 
 import paho.mqtt.client as mqtt
 from PIL import Image
