@@ -17,23 +17,13 @@ DEBUG = False
 
 
 def internet_time() -> float:
-    """Swatch Internet Time based on Biel Meridian."""
-    h, m, s = time.gmtime()[3:6]
-    h += 1  # Biel time zone: UTC+1
-    seconds = s + 60.0 * m + 60.0 * 60.0 * h
-    beats = seconds * 1000.0 / (60.0 * 60.0 * 24.0)
-    beats %= 1000.0
-    return beats
-
-
-def internet_time2() -> float:
-    """More granular Swatch Time."""
+    """Granular Swatch Internet Time based on Biel Meridian (UTC+1)."""
     return (((time.time() + 3600) % 86400) * 1000) / 86400
 
 
 def render_time_bitmap() -> bytes:
     """Render local time and Swatch beats into a 2-panel bitmap."""
-    beats = internet_time2()
+    beats = internet_time()
     msg = time.strftime("%H:%M:%S")
     txtimg = base_font.strImg(msg)
     img = Image.new("1", (120, 7))
