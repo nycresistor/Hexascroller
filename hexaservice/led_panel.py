@@ -49,6 +49,7 @@ class Panel:
             self.port = port_name
         else:
             self.serial_port = serial.Serial(port_name, baud, timeout=0.5)
+            logger.info(f"Opening serial port {self.serial_port.portstr}")
             try:
                 self.serial_port.open()
             except serial.serialutil.SerialException as se:
@@ -87,9 +88,9 @@ class Panel:
         try:
             if on:
                 self.command(CC_RELAY, struct.pack("B", 1))
-                logging.info("Relay on")
+                logging.info("Relay on" for panel {self.id})
             else:
-                logging.info("Relay off")
+                logging.info("Relay off for panel {self.id}")
                 self.command(CC_RELAY, struct.pack("B", 0))
         except Exception as e:
             logging.error(f"Error setting relay state for panel {self.id}: {e}")
