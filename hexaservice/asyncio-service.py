@@ -8,8 +8,9 @@ from aiologger import Logger
 from PIL import Image
 import asyncio_mqtt as aiomqtt
 
+import led_panel
 from fontutil import base_font
-from led_panel import compile_image, panels, init_panels, shutdown_panels
+from led_panel import compile_image, panels
 
 DEBUG = False
 
@@ -155,7 +156,9 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
 async def main():
     logger = Logger.with_default_handlers(name="hexaservice", level=logging.DEBUG)
     logger.info("Starting up...")
-    if not init_panels(DEBUG):
+    panel_status = led_panel.init_panels(DEBUG)
+    logger.debug(f"Panel status: {panel_status}")
+    if not panel_status:
         raise IOError("Failed to initialize all three LED panels. Aborting.")
     else:
         logger.info("Initialized all three LED panels.")
@@ -180,7 +183,7 @@ async def main():
         await asyncio.gather(panel_task, mqtt_task)
     finally:
         logger.info("Shutting down...")
-        shutdown_panels()
+        led_panel.shutdown_panels()
         panels[0].set_relay(False)
         await client.publish(AVAILABILITY_TOPIC, "offline")
         await client.publish(TOPIC_POWER, "OFF")
