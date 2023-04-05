@@ -8,7 +8,8 @@ import time
 import logging
 from typing import List, Optional, Union
 from PIL import Image
-import logging
+from aiologger import Logger
+
 
 CC_TEXT = 0xA1
 CC_BITMAP = 0xA2
@@ -17,6 +18,7 @@ CC_GET_ID = 0xA4
 CC_UART = 0xA5
 CC_RELAY = 0xA6
 
+logger = Logger.with_default_handlers(name="led_panel")
 
 def compile_image(img: Image, x: int = 0, y: int = 0) -> bytes:
     width = min(img.size[0] - x, 120)
@@ -122,7 +124,8 @@ class Panel:
 panels: List[Optional[Panel]] = [None] * 3
 
 
-def init_panels(debug: bool = False) -> bool:
+def init_panels(debug: bool = False, logger: Logger) -> bool:
+    self.logger = logger
     if debug:
         for port_num in range(0, 3):
             port = 9990 + port_num

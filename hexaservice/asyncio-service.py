@@ -112,6 +112,7 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
 
     # Initialize the relay state and send the initial state to the MQTT broker
     logger.debug("Initializing relay state...")
+    led_panel.init_panels(DEBUG)
     panels[0].set_relay(True)
     powered = True
     logger.debug("Relay state initialized. Publishing power state...")
@@ -156,10 +157,6 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
 async def main():
     logger = Logger.with_default_handlers(name="hexaservice", level=logging.DEBUG)
     logger.info("Starting up...")
-
-    led_panel.init_panels(DEBUG)
-    panels[0].set_relay(True)
-
 
     host = os.environ.get("MQTT_BROKER", "homeassistant.local")
     user = os.environ.get("MQTT_USER")
