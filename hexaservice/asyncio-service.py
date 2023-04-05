@@ -188,7 +188,8 @@ if __name__ == "__main__":
 
     logger = Logger.with_default_handlers(name="hexaservice", level=logging.DEBUG)
     logger.info("Starting up...")
-    if not led_panel.init(DEBUG):
+    panel_status = await led_panel.init(DEBUG):
+    if not panel_status:
         raise IOError("Failed to initialize all three LED panels. Aborting.")
     else:
         logger.info("Initialized all three LED panels.")
