@@ -82,7 +82,9 @@ async def mqtt_thread(client: aiomqtt.Client, logger: Logger):
 
     # Subscribe to relevant topics
     topics = [TOPIC_POWER_SET, TOPIC_MESSAGE]
-    await client.subscribe(topics, 0)
+    for topic in topics:
+        logger.debug(f"Subscribing to topic: {topic}")
+        await client.subscribe(topic, 0)
 
     async for msg in client.filtered_messages(topics):
         if msg.topic == TOPIC_POWER_SET:
