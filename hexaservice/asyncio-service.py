@@ -107,7 +107,7 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
         client (aiomqtt.Client): The MQTT client instance.
         logger (Logger): The logger instance.
     """
-    global powered, message, msg_until, panel_width
+    global powered, message, msg_until, panel_width, panels
 
     # Initialize the relay state and send the initial state to the MQTT broker
     logger.debug("Initializing relay state...")
@@ -155,7 +155,7 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
 async def main():
     logger = Logger.with_default_handlers(name="hexaservice", level=logging.DEBUG)
     logger.info("Starting up...")
-    if not await init_panels(DEBUG):
+    if not init_panels(DEBUG):
         raise IOError("Failed to initialize all three LED panels. Aborting.")
     else:
         logger.info("Initialized all three LED panels.")
@@ -179,6 +179,7 @@ async def main():
     try:
         await asyncio.gather(panel_task, mqtt_task)
     finally:
+        logger.info("Shutting down...")
         shutdown_panels()
         panels[0].set_relay(False)
         await client.publish(AVAILABILITY_TOPIC, "offline")
