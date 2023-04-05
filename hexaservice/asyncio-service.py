@@ -156,7 +156,7 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
 async def main():
     global logger
 
-    await led_panel.init(DEBUG)
+    await led_panel.init_panels(DEBUG)
     await panels[0].setRelay(True)
 
 
