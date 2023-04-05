@@ -154,7 +154,8 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
 
 
 async def main():
-    global logger
+    logger = Logger.with_default_handlers(name="hexaservice", level=logging.DEBUG)
+    logger.info("Starting up...")
 
     await led_panel.init_panels(DEBUG)
     await panels[0].setRelay(True)
@@ -189,9 +190,6 @@ async def main():
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "debug":
         DEBUG = True
-
-    logger = Logger.with_default_handlers(name="hexaservice", level=logging.DEBUG)
-    logger.info("Starting up...")
     # if not panel_status:
     #     raise IOError("Failed to initialize all three LED panels. Aborting.")
     # else:
