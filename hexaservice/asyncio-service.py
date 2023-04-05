@@ -111,7 +111,7 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
         client (aiomqtt.Client): The MQTT client instance.
         logger (Logger): The logger instance.
     """
-    global powered, message, msg_until, panel_width, hlock
+    global powered, message, msg_until, panel_width
 
     # Initialize the relay state and send the initial state to the MQTT broker
     panels[0].set_relay(True)
