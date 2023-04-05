@@ -158,7 +158,7 @@ async def main():
     logger.info("Starting up...")
 
     led_panel.init_panels(DEBUG)
-    panels[0].setRelay(True)
+    panels[0].set_relay(True)
 
 
     host = os.environ.get("MQTT_BROKER", "homeassistant.local")
