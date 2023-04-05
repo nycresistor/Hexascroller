@@ -188,11 +188,11 @@ if __name__ == "__main__":
 
     logger = Logger.with_default_handlers(name="hexaservice", level=logging.DEBUG)
     logger.info("Starting up...")
-    panel_status = await led_panel.init(DEBUG):
-    if not panel_status:
-        raise IOError("Failed to initialize all three LED panels. Aborting.")
-    else:
-        logger.info("Initialized all three LED panels.")
-    panels[0].setRelay(True)
+    await led_panel.init(DEBUG)
+    # if not panel_status:
+    #     raise IOError("Failed to initialize all three LED panels. Aborting.")
+    # else:
+    #     logger.info("Initialized all three LED panels.")
+    await panels[0].setRelay(True)
 
     asyncio.run(main())
