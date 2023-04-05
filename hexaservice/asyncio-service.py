@@ -157,8 +157,8 @@ async def main():
     logger = Logger.with_default_handlers(name="hexaservice", level=logging.DEBUG)
     logger.info("Starting up...")
 
-    await led_panel.init_panels(DEBUG)
-    await panels[0].setRelay(True)
+    led_panel.init_panels(DEBUG)
+    panels[0].setRelay(True)
 
 
     host = os.environ.get("MQTT_BROKER", "homeassistant.local")
