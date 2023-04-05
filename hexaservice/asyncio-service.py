@@ -162,9 +162,12 @@ async def main():
     if DEBUG:
         host = "localhost"
 
+    logger.info(f"Connecting to MQTT broker as {user} at {host}...")
     async with aiomqtt.Client(host, username=user, password=pw) as client:
+        logger.info("Connected to MQTT broker. Publishing availability...")
         await client.publish(AVAILABILITY_TOPIC, "online")
         hlock = asyncio.Lock()
+        logger.info("Starting panel and MQTT threads...")
         panel_task = asyncio.create_task(panel_thread(client, logger, hlock))
         mqtt_task = asyncio.create_task(mqtt_thread(client, logger))
 
