@@ -8,7 +8,7 @@ from aiologger import Logger
 from PIL import Image
 import asyncio_mqtt as aiomqtt
 
-from fontutil import base_font, str_width
+from fontutil import base_font
 from led_panel import (
     init_panels,
     shutdown_panels,
