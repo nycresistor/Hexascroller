@@ -8,6 +8,7 @@ import time
 import logging
 from typing import List, Optional, Union
 from PIL import Image
+import logging
 
 CC_TEXT = 0xA1
 CC_BITMAP = 0xA2
@@ -31,7 +32,8 @@ def compile_image(img: Image, x: int = 0, y: int = 0) -> bytes:
 
 
 class Panel:
-    def __init__(self, debug: Union[bool, int] = False):
+    def __init__(self, debug: bool = False):
+        logging.info("Initializing panel")
         self.serial_port = None
 
         if debug is not False:
@@ -49,7 +51,7 @@ class Panel:
             self.port = port_name
         else:
             self.serial_port = serial.Serial(port_name, baud, timeout=0.5)
-            logger.info(f"Opening serial port {self.serial_port.portstr}")
+            logging.info(f"Opening serial port {port_name} at {baud} baud")
             try:
                 self.serial_port.open()
             except serial.serialutil.SerialException as se:
