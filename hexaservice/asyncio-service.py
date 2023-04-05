@@ -85,6 +85,7 @@ async def mqtt_thread(client: aiomqtt.Client, logger: Logger):
     for topic in topics:
         logger.debug(f"Subscribing to topic: {topic}")
         await client.subscribe(topic, 0)
+        logger.debug(f"Subscribed to topic: {topic}")
 
     async for msg in client.filtered_messages(topics):
         if msg.topic == TOPIC_POWER_SET:
@@ -109,8 +110,10 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
     global powered, message, msg_until, panel_width
 
     # Initialize the relay state and send the initial state to the MQTT broker
+    logger.debug("Initializing relay state...")
     panels[0].set_relay(True)
     powered = True
+    logger.debug("Relay state initialized. Publishing power state...")
     await client.publish(TOPIC_POWER, "ON")
 
     while True:
