@@ -112,7 +112,7 @@ async def panel_thread(client: aiomqtt.Client, logger: Logger, hlock: asyncio.Lo
 
     # Initialize the relay state and send the initial state to the MQTT broker
     logger.debug("Initializing relay state...")
-    led_panel.init_panels(DEBUG)
+    led_panel.init_panels(logger, DEBUG)
     panels[0].set_relay(True)
     powered = True
     logger.debug("Relay state initialized. Publishing power state...")

@@ -35,7 +35,7 @@ def compile_image(img: Image, x: int = 0, y: int = 0) -> bytes:
 
 class Panel:
     def __init__(self, debug: bool = False):
-        logging.info("Initializing panel")
+        logger.info("Initializing panel")
         self.serial_port = None
 
         if debug is not False:
@@ -48,18 +48,18 @@ class Panel:
         if self.debug:
             import socket
 
-            logging.info(f"Opening UDP socket to localhost : {port_name}")
+            logger.info(f"Opening UDP socket to localhost : {port_name}")
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.port = port_name
         else:
             self.serial_port = serial.Serial(port_name, baud, timeout=0.5)
-            logging.info(f"Opening serial port {port_name} at {baud} baud")
+            logger.info(f"Opening serial port {port_name} at {baud} baud")
             try:
                 self.serial_port.open()
             except serial.serialutil.SerialException as se:
-                logging.warning(f"Serial port autoopened, probably ok. {se}")
+                logger.warning(f"Serial port autoopened, probably ok. {se}")
             except serial.SerialException as e:
-                logging.error(
+                logger.error(
                     f"Could not open serial port {self.serial_port.portstr}: {e}"
                 )
 
@@ -92,12 +92,12 @@ class Panel:
         try:
             if on:
                 self.command(CC_RELAY, struct.pack("B", 1))
-                logging.info("Relay on for panel {self.id}")
+                logger.info("Relay on for panel {self.id}")
             else:
-                logging.info("Relay off for panel {self.id}")
+                logger.info("Relay off for panel {self.id}")
                 self.command(CC_RELAY, struct.pack("B", 0))
         except Exception as e:
-            logging.error(f"Error setting relay state for panel {self.id}: {e}")
+            logger.error(f"Error setting relay state for panel {self.id}: {e}")
             raise e
 
     def set_message(self, message: str, x: int = 0, y: int = 0) -> None:
@@ -117,15 +117,15 @@ class Panel:
 
         v = self.command(CC_GET_ID, b"")
         self.id = v[0]
-        logging.info(f"ID'd panel {self.id}")
+        logger.info(f"ID'd panel {self.id}")
         return self.id
 
 
 panels: List[Optional[Panel]] = [None] * 3
 
 
-def init_panels(debug: bool = False, logger: Logger) -> bool:
-    self.logger = logger
+def init_panels(parent_logger: Logger, debug: bool = False) -> bool:
+    logger = parent_logger
     if debug:
         for port_num in range(0, 3):
             port = 9990 + port_num
@@ -139,13 +139,13 @@ def init_panels(debug: bool = False, logger: Logger) -> bool:
         for candidate in glob.glob("/dev/ttyACM*"):
             p = Panel()
             try:
-                logging.info(f"Opening candidate {candidate}")
+                logger.info(f"Opening candidate {candidate}")
                 p.open(candidate)
                 panels[p.get_id()] = p
-                logging.info(f"{candidate} succeeded")
+                logger.info(f"{candidate} succeeded")
             except Exception:
                 p.close()
-                logging.warning(f"{candidate} failed")
+                logger.warning(f"{candidate} failed")
         return functools.reduce(lambda a, b: a & (b is not None), panels, True)
 
 
