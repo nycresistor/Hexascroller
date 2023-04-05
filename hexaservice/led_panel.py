@@ -88,7 +88,7 @@ class Panel:
         try:
             if on:
                 self.command(CC_RELAY, struct.pack("B", 1))
-                logging.info("Relay on" for panel {self.id})
+                logging.info("Relay on for panel {self.id}")
             else:
                 logging.info("Relay off for panel {self.id}")
                 self.command(CC_RELAY, struct.pack("B", 0))
