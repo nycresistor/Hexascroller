@@ -1,35 +1,51 @@
 #!/usr/bin/python3
 
+import glob
+import os
 import serial
 import sys
 import struct
+import time
 import functools
+import logging
+from enum import Enum
+from typing import Union, List, Tuple
+from PIL import Image
 
-CC_TEXT = 0xA1
-CC_BITMAP = 0xA2
-CC_SET_ID = 0xA3
-CC_GET_ID = 0xA4
-CC_UART = 0xA5
-CC_RELAY = 0xA6
 
+# Constants
+class CommandCode(Enum):
+    TEXT = 0xA1
+    BITMAP = 0xA2
+    SET_ID = 0xA3
+    GET_ID = 0xA4
+    UART = 0xA5
+    RELAY = 0xA6
+
+PANEL_HEIGHT = 7
+PANEL_WIDTH = 120
+
+# Configuring logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def compile_image(img, x=0, y=0):
     bitmap = b""
-    width = min(img.size[0] - x, 120)
-    height = min(7, img.size[1] - y)
+    width = min(img.size[0] - x, PANEL_WIDTH)
+    height = min(PANEL_HEIGHT, img.size[1] - y)
 
     for i in range(width):
         b = 0
         for j in range(height):  # vertical scanning? jerk
             if img.getpixel((i + x, j + y)):
-                b |= 1 << (7 - j)
+                b |= 1 << (PANEL_HEIGHT - j)
         bitmap = bitmap + struct.pack("B", b)
     return bitmap
 
 
 class Panel:
-    def __init__(self, debug=False):
-        self.serialPort = None
+    def __init__(self, debug : bool = False) -> None:
+        self.serial_port = None
 
         if debug is not False:
             self.debug = True
@@ -37,89 +53,85 @@ class Panel:
         else:
             self.debug = False
 
-    def open(self, portName, baud=9600):
+    def open(self, port_name: str, baud: int = 9600) -> None:
         if self.debug:
             import socket
 
-            print("Opening UDP socket to localhost : {}".format(portName))
+            logger.info(f"Opening UDP socket to localhost : {port_name}")
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.port = portName
+            self.port = port_name
 
         else:
-            self.serialPort = serial.Serial(portName, baud, timeout=0.5)
+            self.serial_port = serial.Serial(port_name, baud, timeout=0.5)
             try:
-                self.serialPort.open()
+                self.serial_port.open()
             except serial.serialutil.SerialException as se:
-                sys.stderr.write("Serial port autoopened, probably ok. {}\n".format(se))
+                logger.warning(f"Serial port autoopened, probably ok. {se}")
             except serial.SerialException as e:
-                sys.stderr.write(
-                    "Could not open serial port {}: {}\n".format(
-                        self.serialPort.portstr, e
-                    )
-                )
+                logger.error(f"Could not open serial port {self.serial_port.portstr}: {e}")
+                sys.exit(1)
 
-    def command(self, command, payload, expected):
-        l = len(payload)
-        packet = struct.pack("BB", command, l)
-        if l > 0:
+    def command(self, command: CommandCode, payload: bytes, expected: int) -> bytes:
+        payload_length = len(payload)
+        packet = struct.pack("BB", command.value, payload_length)
+        if payload_length > 0:
             packet = packet + payload
         if self.debug:
             self.sock.sendto(packet, ("127.0.0.1", self.port))
-            return
-        self.serialPort.write(packet)
-        rsp = self.serialPort.read(2)
+            return b""
+        self.serial_port.write(packet)
+        rsp = self.serial_port.read(2)
         if len(rsp) < 2 or rsp[0] != 0:
-            # print("Error on panel {1} command {0}".format(command,self.id))
             if len(rsp) == 2:
                 epl = rsp[1]
                 if epl > 0:
-                    rsp = rsp + self.serialPort.read(epl)
-            # print("Rsp length {0}, {1}".format(len(rsp),rsp))
-            return ""
-        l = rsp[1]
-        rpay = self.serialPort.read(l)
-        return rpay
+                    rsp = rsp + self.serial_port.read(epl)
+            logger.error(f"Error on panel {self.id}, command {command.value}. Response: {rsp}")
+            return b""
+        payload_length = rsp[1]
+        response_payload = self.serial_port.read(payload_length)
+        return response_payload
 
     def close(self):
         if self.debug:
             return
-        self.serialPort.close()
+        self.serial_port.close()
 
-    def setRelay(self, on):
+    def set_relay(self, on: bool) -> None:
         if on:
-            self.command(CC_RELAY, struct.pack("B", 1), 0)
-            print("Relay on")
+            self.command(CommandCode.RELAY, struct.pack("B", 1), 0)
+            logger.info("Relay on")
         else:
-            print("Relay off")
-            self.command(CC_RELAY, struct.pack("B", 0), 0)
+            logger.info("Relay off")
+            self.command(CommandCode.RELAY, struct.pack("B", 0), 0)
 
-    def setMessage(self, message, x=0, y=0):
+    def set_message(self, message: str, x: int = 0, y: int = 0) -> None:
         message = message[:100]
-        cmd = struct.pack("bb", x, y) + message
-        self.command(CC_TEXT, cmd, 0)
+        cmd = struct.pack("bb", x, y) + message.encode()
+        self.command(CommandCode.TEXT, cmd, 0)
 
-    def setImage(self, img, x=0, y=0):
-        self.command(CC_BITMAP, compile_image(img, x, y), 0)
+    def set_image(self, img: Image.Image, x: int = 0, y: int = 0) -> None:
+        self.command(CommandCode.BITMAP, compile_image(img, x, y), 0)
 
-    def setCompiledImage(self, bitmap):
-        self.command(CC_BITMAP, bitmap, 0)
+    def set_compiled_image(self, bitmap: bytes) -> None:
+        self.command(CommandCode.BITMAP, bitmap, 0)
 
-    def getID(self):
+    def get_id(self) -> int:
         if self.debug:
             return self.id
 
-        v = self.command(CC_GET_ID, "", 1)
+        v = self.command(CommandCode.GET_ID, b"", 1)
         self.id = v[0]
-        print("ID'd panel {0}".format(self.id))
+        logger.info(f"ID'd panel {self.id}")
         return self.id
 
 
-panels = [None] * 3
+panels: List[Panel] = [Panel] * 3
 import glob
 import time
 
 
-def init(debug=False):
+def init(debug: bool = False) -> bool:
     if debug:
         for port_num in range(0, 3):
             port = 9990 + port_num
@@ -133,14 +145,14 @@ def init(debug=False):
         for candidate in glob.glob("/dev/ttyACM*"):
             p = Panel()
             try:
-                print("Opening candidate {}".format(candidate))
+                logger.info(f"Opening candidate {candidate}")
                 p.open(candidate)
-                panels[p.getID()] = p
-                print("{} succeeded".format(candidate))
+                panels[p.get_id()] = p
+                logger.info(f"{candidate} succeeded")
             except Exception:
                 p.close()
-                print("{} failed".format(candidate))
-        return functools.reduce(lambda a, b: a & (b is not None), panels, True)
+                logger.info(f"{candidate} failed")
+        return all(panel is not None for panel in panels)
 
 
 def shutdown():

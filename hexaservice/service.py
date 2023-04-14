@@ -98,7 +98,7 @@ def on_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
     if msg.topic == TOPIC_POWER_SET:
         powered = msg.payload == b"ON"
         with hlock:
-            panels[0].setRelay(powered)
+            panels[0].set_relay(powered)
         client.publish(TOPIC_POWER, msg.payload)
     elif msg.topic == TOPIC_MESSAGE:
         msg_offset = 0
@@ -157,11 +157,11 @@ def panel_thread():
                 bitmap = render_time_bitmap()
             with hlock:
                 for j in range(3):
-                    panels[j].setCompiledImage(bitmap)
+                    panels[j].set_compiled_image(bitmap)
             time.sleep(0.06)
         else:
             time.sleep(0.25)
-    panels[0].setRelay(False)
+    panels[0].set_relay(False)
 
     led_panel.shutdown()
 
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     if not led_panel.init(DEBUG):
         print("Could not find all three panels; aborting.")
         sys.exit(0)
-    panels[0].setRelay(True)
+    panels[0].set_relay(True)
 
     def sigint_handler(signal, frame):
         global running
