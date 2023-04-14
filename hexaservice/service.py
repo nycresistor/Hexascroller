@@ -14,6 +14,7 @@ from fontutil import base_font
 
 DEBUG = False
 
+
 class SimpleCache:
     def __init__(self):
         self.key = None
@@ -28,8 +29,10 @@ class SimpleCache:
         self.key = key
         self.value = value
 
+
 render_message_cache = SimpleCache()
 render_time_bitmap_cache = SimpleCache()
+
 
 def internet_time() -> float:
     """Granular Swatch Internet Time based on Biel Meridian (UTC+1)."""
@@ -40,7 +43,7 @@ def render_time_bitmap() -> bytes:
     """Render local time and Swatch beats into a 2-panel bitmap."""
     beats = internet_time()
     msg = time.strftime("%H:%M:%S")
-    cached_result = render_message_cache.get(beats+msg)
+    cached_result = render_message_cache.get(beats + msg)
     if cached_result:
         return cached_result
     txtimg = base_font.strImg(msg)
@@ -51,7 +54,7 @@ def render_time_bitmap() -> bytes:
     img.paste(txt2img, (62, 0))
     img.paste(base_font.strImg(".beats"), (93, 0))
     bitmap = compile_image(img, 0, 0)
-    render_message_cache.set(beats+msg, bitmap)
+    render_message_cache.set(beats + msg, bitmap)
     return bitmap
 
 
