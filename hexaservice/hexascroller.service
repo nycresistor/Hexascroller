@@ -9,6 +9,7 @@ Environment=MQTT_PASS=None
 WorkingDirectory=/home/pi/Hexascroller/hexaservice
 ExecStart=/usr/bin/python3 ./service.py
 Restart=always
+RuntimeMaxSec=1d
 
 [Install]
 WantedBy=multi-user.target
