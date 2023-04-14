@@ -1,6 +1,6 @@
 #!/usr/src/python3
 
-from PIL import Image, ImageDraw, ImageChops
+from PIL import Image, ImageChops
 
 
 def getChar(img, x):

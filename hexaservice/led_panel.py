@@ -3,7 +3,6 @@
 import serial
 import sys
 import struct
-import random
 import functools
 
 CC_TEXT = 0xA1
@@ -138,10 +137,10 @@ def init(debug=False):
                 p.open(candidate)
                 panels[p.getID()] = p
                 print("{} succeeded".format(candidate))
-            except Exception as e:
+            except Exception:
                 p.close()
                 print("{} failed".format(candidate))
-        return functools.reduce(lambda a, b: a & (b != None), panels, True)
+        return functools.reduce(lambda a, b: a & (b is not None), panels, True)
 
 
 def shutdown():
