@@ -97,16 +97,12 @@ def mqtt_thread():
         print(f"Logging into MQTT as {user}")
         client.username_pw_set(user, pw)
     client.connect(host, 1883, 60)
+    client.loop_start()
     while running:
-        try:
-            client.connect(host, 1883, 60)
-            while running:
-                client.loop()
-        except Exception as e:
-            print(f"MQTT connection error: {e}. Retrying in 5 seconds...")
-            time.sleep(5)
+        time.sleep(1)
     client.publish(TOPIC_POWER, b"OFF", qos=0)
     client.publish(AVAILABILITY_TOPIC, "offline")
+    client.loop_stop()
     client.disconnect()
 
 
