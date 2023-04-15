@@ -43,13 +43,13 @@ def render_time_bitmap() -> bytes:
     """Render local time and Swatch beats into a 2-panel bitmap."""
     beats = internet_time()
     msg = time.strftime("%H:%M:%S")
-    cached_result = render_message_cache.get(beats + msg)
+    bmsg = f"{beats:06.2f}"
+    cached_result = render_message_cache.get(bmsg + msg)
     if cached_result:
         return cached_result
     txtimg = base_font.strImg(msg)
     img = Image.new("1", (120, 7))
-    img.paste(txtimg, (15, 0))
-    bmsg = f"{beats:06.2f}"
+    img.paste(txtimg, (15, 0)) 
     txt2img = base_font.strImg(bmsg)
     img.paste(txt2img, (62, 0))
     img.paste(base_font.strImg(".beats"), (93, 0))
