@@ -131,7 +131,7 @@ import glob
 import time
 
 
-def init(debug: bool = False) -> bool:
+def init_panel(debug: bool = False) -> bool:
     if debug:
         for port_num in range(0, 3):
             port = 9990 + port_num
@@ -155,6 +155,6 @@ def init(debug: bool = False) -> bool:
         return all(panel is not None for panel in panels)
 
 
-def shutdown():
+def shutdown_panel():
     for p in panels:
         p.close()
