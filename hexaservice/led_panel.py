@@ -82,11 +82,11 @@ class Panel:
         self.serial_port.write(packet)
         rsp = self.serial_port.read(2)
         if len(rsp) < 2 or rsp[0] != 0:
-            if len(rsp) == 2:
-                epl = rsp[1]
-                if epl > 0:
-                    rsp = rsp + self.serial_port.read(epl)
-            logger.error(f"Error on panel {self.id}, command {command.value}. Response: {rsp}")
+            # if len(rsp) == 2:
+            #     epl = rsp[1]
+            #     if epl > 0:
+            #         rsp = rsp + self.serial_port.read(epl)
+            # logger.error(f"Error on panel {self.id}, command {command.value}. Response: {rsp}")
             return b""
         payload_length = rsp[1]
         response_payload = self.serial_port.read(payload_length)
