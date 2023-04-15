@@ -191,22 +191,28 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
 
     if msg.topic == TOPIC_POWER_SET:
         state.powered: bool = msg.payload == b"ON"
+        logger.info("Power set to %s", state.powered)
         with hlock:
             panels[0].set_relay(state.powered)
         client.publish(TOPIC_POWER, msg.payload)
     elif msg.topic == TOPIC_MESSAGE:
         state.msg_offset = 0
         state.message = msg.payload.decode()
+        logger.info("Message received: %s", state.message)
         state.msg_until = time.time() + MSG_DURATION
 
         # Calculate scroll interval based on the width of the message
         message_width = base_font.string_width(state.message)
         if message_width > PANEL_WIDTH:
+            logger.info("Message width: %d", message_width)
             scroll_duration = 0.9 * MSG_DURATION  # 90% of MSG_DURATION
+            logger.info("Scroll duration: %f", scroll_duration")
             state.scroll_interval = scroll_duration / (message_width - PANEL_WIDTH)
+            logger.info("Scroll interval: %f", state.scroll_interval)
         else:
             state.scroll_interval = 0
     elif msg.topic == TOPIC_INVERT_SET:
+        logger.info("Invert: %s", msg.payload)
         state.inverted = msg.payload == b"ON"
         client.publish(TOPIC_INVERT, msg.payload)
 
@@ -252,6 +258,7 @@ def panel_thread():
                     bitmap = render_text_bitmap(state.message, 0)
                 if time.time() > state.msg_until:
                     state.msg_until = None
+                    logger.info("Message expired")
             else:
                 bitmap = render_time_bitmap()
             with hlock:
