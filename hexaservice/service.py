@@ -54,7 +54,7 @@ def render_time_bitmap() -> bytes:
     img.paste(txt2img, (62, 0))
     img.paste(base_font.strImg(".beats"), (93, 0))
     bitmap = compile_image(img, 0, 0)
-    render_message_cache.set(beats + msg, bitmap)
+    render_message_cache.set(bmsg + msg, bitmap)
     return bitmap
 
 
