@@ -47,12 +47,12 @@ def render_time_bitmap() -> bytes:
     cached_result = render_message_cache.get(bmsg + msg)
     if cached_result:
         return cached_result
-    txtimg = base_font.strImg(msg)
+    txtimg = base_font.string_image(msg)
     img = Image.new("1", (120, 7))
     img.paste(txtimg, (15, 0)) 
-    txt2img = base_font.strImg(bmsg)
+    txt2img = base_font.string_image(bmsg)
     img.paste(txt2img, (62, 0))
-    img.paste(base_font.strImg(".beats"), (93, 0))
+    img.paste(base_font.string_image(".beats"), (93, 0))
     bitmap = compile_image(img, 0, 0)
     render_message_cache.set(bmsg + msg, bitmap)
     return bitmap
@@ -63,7 +63,7 @@ def render_message_bitmap(msg: str, offset: int) -> bytes:
     cached_result = render_message_cache.get(message)
     if cached_result:
         return cached_result
-    txtimg = base_font.strImg(msg)
+    txtimg = base_font.string_image(msg)
     img = Image.new("1", (120, 7))
     img.paste(txtimg, (offset, 0))
     bitmap = compile_image(img, 0, 0)
