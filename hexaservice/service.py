@@ -206,7 +206,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
         if message_width > PANEL_WIDTH:
             logger.info("Message width: %d", message_width)
             scroll_duration = 0.9 * MSG_DURATION  # 90% of MSG_DURATION
-            logger.info("Scroll duration: %f", scroll_duration")
+            logger.info("Scroll duration: %f", scroll_duration)
             state.scroll_interval = scroll_duration / (message_width - PANEL_WIDTH)
             logger.info("Scroll interval: %f", state.scroll_interval)
         else:
