@@ -49,10 +49,10 @@ class CommandCode(Enum):
     ones used by this module.
     """
 
-    TEXT = 0xA1
-    BITMAP = 0xA2
-    GET_ID = 0xA4
-    RELAY = 0xA6
+    TEXT = 0xA1 #  
+    BITMAP = 0xA2 # 162
+    GET_ID = 0xA4 # 164
+    RELAY = 0xA6 # 166
 
 
 PANEL_HEIGHT = 7
@@ -185,6 +185,7 @@ class Panel:
         :return: The response payload as bytes.
         """
         payload_length = len(payload)
+        logger.info("Sending command %s, payload length %i", command.value, payload_length)
         packet = struct.pack("BB", command.value, payload_length)
         if payload_length > 0:
             packet = packet + payload
@@ -276,12 +277,13 @@ class Panel:
         """
         if not isinstance(bitmap, bytes):
             raise ValueError(f"Bitmap must be a bytes object. instead got: {type(bitmap)}")
-        if len(bitmap) != PANEL_WIDTH * PANEL_HEIGHT:
+        if len(bitmap) != PANEL_WIDTH:
             raise ValueError(
-                f"Bitmap length must be equal to number of panel size ({PANEL_WIDTH * PANEL_HEIGHT} pixels). Instead got {len(bitmap)} bytes."
+                f"Bitmap length must be equal to number of panel width ({PANEL_WIDTH} bytes). Instead got {len(bitmap)} bytes."
             )
 
-        self.command(CommandCode.BITMAP, bitmap, 0)
+        # For some reason, the BITMAP command returns a status code of 1 instead of 0.
+        self.command(CommandCode.BITMAP, bitmap, 1)
 
     def get_id(self) -> int:
         """
