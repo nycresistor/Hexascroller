@@ -199,7 +199,7 @@ class Panel:
                 epl = rsp[1]
                 if epl > 0:
                     rsp = rsp + self.serial_port.read(epl)
-            if rsp[0] != expected
+            if rsp[0] != expected:
                 logger.error(
                     "Error on panel %s, command %s. Expected %s but got response: %s",
                     self.id,
