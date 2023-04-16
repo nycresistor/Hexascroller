@@ -114,9 +114,9 @@ def init_panel(debug: bool = False) -> bool:
                 panel.open(candidate)
                 panels[panel.get_id()] = panel
                 logger.info("Candidate %s succeeded", candidate)
-            except Exception:
+            except Exception as exception:
                 panel.close()
-                logger.info("Candidate %s failed", candidate)
+                logger.info("Candidate %s failed, got %s", candidate, exception)
         return all(panel is not None for panel in panels)
 
 
@@ -194,18 +194,19 @@ class Panel:
             return b""
         self.serial_port.write(packet)
         rsp = self.serial_port.read(2)
-        if len(rsp) < 2 or rsp[0] != expected:
+        if len(rsp) < 2 or rsp[0] != 0:
             if len(rsp) == 2:
                 epl = rsp[1]
                 if epl > 0:
                     rsp = rsp + self.serial_port.read(epl)
-            logger.error(
-                "Error on panel %s, command %s. Expected %s but got response: %s",
-                self.id,
-                command.value,
-                expected,
-                rsp,
-            )
+            if rsp[0] != expected
+                logger.error(
+                    "Error on panel %s, command %s. Expected %s but got response: %s",
+                    self.id,
+                    command.value,
+                    expected,
+                    rsp[0],
+                )
             return b""
         payload_length = rsp[1]
         response_payload = self.serial_port.read(payload_length)
