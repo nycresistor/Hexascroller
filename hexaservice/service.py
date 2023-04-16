@@ -34,7 +34,7 @@ import os
 import sys
 import time
 import signal
-from threading import Thread
+from threading import Thread, Lock
 from typing import Optional
 
 import paho.mqtt.client as mqtt
@@ -64,7 +64,7 @@ TOPIC_INVERT_SET: str = f"{TOPIC_INVERT}/set"
 TOPIC_MESSAGE: str = f"{TOPIC_PREFIX}/message"
 TOPIC_AVAILABILITY: str = f"{TOPIC_PREFIX}/available"
 
-hlock = threading.Lock()
+hlock = Lock()
 
 
 @dataclasses.dataclass
