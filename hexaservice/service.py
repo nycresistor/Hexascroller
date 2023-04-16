@@ -35,6 +35,7 @@ import signal
 import threading
 import logging
 from typing import Optional
+import dataclasses
 
 import paho.mqtt.client as mqtt
 from PIL import Image
@@ -65,8 +66,9 @@ TOPIC_AVAILABILITY: str = f"{TOPIC_PREFIX}/available"
 hlock = threading.Lock()
 
 
+@dataclasses.dataclass
 class State:
-    # pylint: disable=too-few-public-methods
+    # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """
     Represents the state of a hexascroller LED panel display service. The service controls the panel
     display, rendering messages and time information, and communicates with an MQTT broker to
@@ -286,6 +288,7 @@ def panel_thread():
             if state.bitmap != new_bitmap:
                 with hlock:
                     for panel in panels:
+                        # pylint: disable=no-value-for-parameter
                         panel.set_compiled_image(state.bitmap)
                 state.bitmap = new_bitmap
             # Sleep for a while
