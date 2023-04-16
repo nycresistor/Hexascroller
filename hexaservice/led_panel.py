@@ -80,7 +80,7 @@ def compile_image(img, x_pos=0, y_pos=0):
 
     for column in range(width):
         raw_bitmap = 0
-        for row in range(height): # vertical scanning? jerk
+        for row in range(height):  # vertical scanning? jerk
             if img.getpixel((column + x_pos, row + y_pos)):
                 raw_bitmap |= 1 << (PANEL_HEIGHT - row)
         bitmap = bitmap + struct.pack("B", raw_bitmap)
@@ -132,6 +132,7 @@ class Panel:
     on the panel, set the image on the panel, and turn the relay on or off.
     Hexascroller has 3 panels, so there are 3 instances of this class.
     """
+
     def __init__(self, debug: bool = False) -> None:
         self.serial_port = None
 
@@ -163,10 +164,14 @@ class Panel:
             try:
                 self.serial_port.open()
             except serial.serialutil.SerialException as serial_exception:
-                logger.warning("Serial port autoopened, probably ok. %s", serial_exception)
+                logger.warning(
+                    "Serial port autoopened, probably ok. %s", serial_exception
+                )
             except serial.SerialException as serial_exception:
                 logger.error(
-                    "Could not open serial port %s: %s", self.serial_port.portstr, serial_exception
+                    "Could not open serial port %s: %s",
+                    self.serial_port.portstr,
+                    serial_exception,
                 )
                 sys.exit(1)
 
@@ -193,8 +198,13 @@ class Panel:
                 epl = rsp[1]
                 if epl > 0:
                     rsp = rsp + self.serial_port.read(epl)
-            logger.error("Error on panel %s, command %s. Expected %s but got response: %s",
-                          self.id, command.value, expected, rsp)
+            logger.error(
+                "Error on panel %s, command %s. Expected %s but got response: %s",
+                self.id,
+                command.value,
+                expected,
+                rsp,
+            )
             return b""
         payload_length = rsp[1]
         response_payload = self.serial_port.read(payload_length)
@@ -225,7 +235,7 @@ class Panel:
     def set_message(self, message: str, x_pos: int = 0, y_pos: int = 0) -> None:
         """
         Set a text message to be displayed on the LED panel, using the built-in font.
-        
+
         :param message: The message to be displayed.
         :param x_pos: The horizontal position of the message on the panel (default: 0).
         :param y_pos: The vertical position of the message on the panel (default: 0).
@@ -233,7 +243,9 @@ class Panel:
         if not isinstance(message, str):
             raise ValueError("Message must be a string.")
         if not (0 <= x_pos < PANEL_WIDTH) or not (0 <= y_pos < PANEL_HEIGHT):
-            raise ValueError(f"Invalid x, y coordinates. Must be within panel dimensions ({PANEL_WIDTH}, {PANEL_HEIGHT}).")
+            raise ValueError(
+                f"Invalid x, y coordinates. Must be within panel dimensions ({PANEL_WIDTH}, {PANEL_HEIGHT})."
+            )
 
         message = message[:100]
         cmd = struct.pack("bb", x_pos, y_pos) + message.encode()
@@ -250,8 +262,9 @@ class Panel:
         if not isinstance(img, Image.Image):
             raise ValueError("Image must be a PIL.Image.Image object.")
         if not (0 <= x_pos < PANEL_WIDTH) or not (0 <= y_pos < PANEL_HEIGHT):
-            raise ValueError(f"Invalid x, y coordinates. Must be within panel dimensions ({PANEL_WIDTH}, {PANEL_HEIGHT}).")
-
+            raise ValueError(
+                f"Invalid x, y coordinates. Must be within panel dimensions ({PANEL_WIDTH}, {PANEL_HEIGHT})."
+            )
 
         self.command(CommandCode.BITMAP, compile_image(img, x_pos, y_pos), 0)
 
@@ -264,14 +277,16 @@ class Panel:
         if not isinstance(bitmap, bytes):
             raise ValueError("Bitmap must be a bytes object.")
         if len(bitmap) != PANEL_WIDTH * PANEL_HEIGHT:
-            raise ValueError(f"Bitmap length must be equal to number of panel size ({PANEL_WIDTH * PANEL_HEIGHT} pixels). Instead got {len(bitmap)} bytes.")
+            raise ValueError(
+                f"Bitmap length must be equal to number of panel size ({PANEL_WIDTH * PANEL_HEIGHT} pixels). Instead got {len(bitmap)} bytes."
+            )
 
         self.command(CommandCode.BITMAP, bitmap, 0)
 
     def get_id(self) -> int:
         """
         Get the ID of the LED panel.
-        
+
         :return: The ID of the LED panel as an integer.
         """
         if self.debug:
