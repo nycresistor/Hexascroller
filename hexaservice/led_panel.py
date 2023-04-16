@@ -22,12 +22,14 @@ class CommandCode(Enum):
     UART = 0xA5
     RELAY = 0xA6
 
+
 PANEL_HEIGHT = 7
 PANEL_WIDTH = 120
 
 # Configuring logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def compile_image(img, x=0, y=0):
     bitmap = b""
@@ -44,7 +46,7 @@ def compile_image(img, x=0, y=0):
 
 
 class Panel:
-    def __init__(self, debug : bool = False) -> None:
+    def __init__(self, debug: bool = False) -> None:
         self.serial_port = None
 
         if debug is not False:
@@ -68,7 +70,9 @@ class Panel:
             except serial.serialutil.SerialException as se:
                 logger.warning(f"Serial port autoopened, probably ok. {se}")
             except serial.SerialException as e:
-                logger.error(f"Could not open serial port {self.serial_port.portstr}: {e}")
+                logger.error(
+                    f"Could not open serial port {self.serial_port.portstr}: {e}"
+                )
                 sys.exit(1)
 
     def command(self, command: CommandCode, payload: bytes, expected: int) -> bytes:
