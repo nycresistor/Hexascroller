@@ -194,7 +194,7 @@ class Panel:
             return b""
         self.serial_port.write(packet)
         rsp = self.serial_port.read(2)
-        if len(rsp) < 2 or rsp[0] != 0:
+        if len(rsp) < 2 or rsp[0] != expected:
             if len(rsp) == 2:
                 epl = rsp[1]
                 if epl > 0:
