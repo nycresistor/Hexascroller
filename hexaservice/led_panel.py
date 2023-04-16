@@ -185,7 +185,7 @@ class Panel:
         :return: The response payload as bytes.
         """
         payload_length = len(payload)
-        logger.info("Sending command %s, payload length %i", command.value, payload_length)
+        logger.debug("Sending command %s, payload length %i", command.value, payload_length)
         packet = struct.pack("BB", command.value, payload_length)
         if payload_length > 0:
             packet = packet + payload
