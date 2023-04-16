@@ -99,7 +99,7 @@ class State:
     """
 
     def __init__(self):
-        self.bitmap: bytes = b"\0" * PANEL_WIDTH * PANEL_HEIGHT
+        self.bitmap: bytes = b"\0" * PANEL_WIDTH
         self.running: bool = True
         self.powered: bool = True
         self.inverted: bool = False
