@@ -28,17 +28,18 @@ The service also publishes an availability topic:
 
 """
 
+import dataclasses
+import logging
 import os
 import sys
 import time
 import signal
-import threading
-import logging
+from threading import Thread
 from typing import Optional
-import dataclasses
 
 import paho.mqtt.client as mqtt
 from PIL import Image
+import prctl
 
 from led_panel import (
     panels,
@@ -238,6 +239,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
 
 def mqtt_thread():
     """Thread for connecting to the MQTT broker."""
+    prctl.set_name("mqtt thread")
     host = os.environ.get("MQTT_BROKER", "mqttbroker.lan")
     user = os.environ.get("MQTT_USER")
     password = os.environ.get("MQTT_PASS")
@@ -263,6 +265,7 @@ def mqtt_thread():
 
 def panel_thread():
     """Thread for updating the LED panel."""
+    prctl.set_name("panel thread")
     while state.running:
         if state.powered:
             if state.msg_until is not None:
@@ -331,8 +334,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
 
     # Start the threads to handle the MQTT connection and the panel
-    mqtt_thread_instance = threading.Thread(target=mqtt_thread)
-    panel_thread_instance = threading.Thread(target=panel_thread)
+    mqtt_thread_instance = Thread(target=mqtt_thread, name="MQTT Thread")
+    panel_thread_instance = Thread(target=panel_thread, name="Panel Thread")
     panel_thread_instance.start()
     mqtt_thread_instance.start()
     panel_thread_instance.join()
