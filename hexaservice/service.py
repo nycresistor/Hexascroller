@@ -283,7 +283,7 @@ def panel_thread():
                 new_bitmap = render_time_bitmap()
             # Invert the bitmap if the inversion state is true
             if state.inverted:
-                new_bitmap = bytearray(~b & 0xFF for b in bitmap)
+                new_bitmap = bytearray(~b & 0xFF for b in new_bitmap)
             # Update the panel only if the bitmap has changed
             if state.bitmap != new_bitmap:
                 with hlock:
