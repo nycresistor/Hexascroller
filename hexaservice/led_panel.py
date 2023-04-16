@@ -275,7 +275,7 @@ class Panel:
         :param bitmap: The precompiled image bitmap.
         """
         if not isinstance(bitmap, bytes):
-            raise ValueError("Bitmap must be a bytes object. instead got: " + type(bitmap))
+            raise ValueError(f"Bitmap must be a bytes object. instead got: {type(bitmap)}")
         if len(bitmap) != PANEL_WIDTH * PANEL_HEIGHT:
             raise ValueError(
                 f"Bitmap length must be equal to number of panel size ({PANEL_WIDTH * PANEL_HEIGHT} pixels). Instead got {len(bitmap)} bytes."
