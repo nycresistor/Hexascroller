@@ -24,7 +24,7 @@ The mqtt topics this service publishes to are as follows:
 The service also publishes an availability topic:
 
 - hexascroller/available: the availability of the service.
-    The payload will be "online" or "offline
+    The payload will be "online" or "offline"
 
 """
 
@@ -66,11 +66,13 @@ hlock = threading.Lock()
 
 
 class State:
-    #pylint: disable=too-few-public-methods
+    # pylint: disable=too-few-public-methods
     """
     Represents the state of a hexascroller LED panel display service. The service controls the panel
     display, rendering messages and time information, and communicates with an MQTT broker to
     receive commands and updates.
+
+    This is a simple data class or struct class that only stores state. It has no methods.
 
     Attributes:
     -----------
@@ -95,6 +97,7 @@ class State:
     """
 
     def __init__(self):
+        self.bitmap: Optional[bytes] = None
         self.running: bool = True
         self.powered: bool = True
         self.inverted: bool = False
@@ -172,30 +175,29 @@ def render_text_bitmap(text: str, offset: int) -> bytes:
     return bitmap
 
 
-def on_mqtt_connect(client: mqtt.Client, userdata, flags, rc):
-    # pylint: disable=unused-argument
+def on_mqtt_connect(client: mqtt.Client, userdata, flags, resultcode):
     """Callback function when the MQTT client connects to the broker."""
-    client.publish(TOPIC_POWER, b"ON", qos=0)
-    client.publish(TOPIC_INVERT, b"OFF", qos=0)
+    power_state = b"ON" if state.powered else b"OFF"
+    invert_state = b"ON" if state.inverted else b"OFF"
+
+    logger.info(
+        "MQTT client connected, flags %s, result code %s, user data %s",
+        flags,
+        resultcode,
+        userdata,
+    )
     client.publish(TOPIC_AVAILABILITY, "online")
+    client.publish(TOPIC_POWER, power_state, qos=0)
+    client.publish(TOPIC_INVERT, invert_state, qos=0)
     client.subscribe(TOPIC_POWER_SET, qos=0)
     client.subscribe(TOPIC_MESSAGE, qos=0)
     client.subscribe(TOPIC_INVERT_SET, qos=0)
 
 
 def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
-    #pylint: disable=unused-argument
     """Callback function when the MQTT client receives a message."""
-    # pylint: disable=global-statement,global-variable-not-assigned
-    global state
-
-    if msg.topic == TOPIC_POWER_SET:
-        state.powered: bool = msg.payload == b"ON"
-        logger.info("Power set to %s", state.powered)
-        with hlock:
-            panels[0].set_relay(state.powered)
-        client.publish(TOPIC_POWER, msg.payload)
-    elif msg.topic == TOPIC_MESSAGE:
+    logger.info("MQTT message received: %s, user data %s", msg.topic, userdata)
+    if msg.topic == TOPIC_MESSAGE:
         state.msg_offset = 0
         state.message = msg.payload.decode()
         logger.info("Message received: %s", state.message)
@@ -211,10 +213,25 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
             logger.info("Scroll interval: %f", state.scroll_interval)
         else:
             state.scroll_interval = 0
+    elif msg.topic == TOPIC_POWER_SET:
+        if msg.payload in (b"ON", b"OFF"):
+            state.powered: bool = msg.payload == b"ON"
+            logger.info("Power set to %s", state.powered)
+            with hlock:
+                # Turn on/off all panels
+                # pylint: disable=no-value-for-parameter
+                panels[0].set_relay(state.powered)
+            client.publish(TOPIC_POWER, msg.payload)
+        else:
+            logger.warning("Invalid payload received for power state: %s", msg.payload)
+
     elif msg.topic == TOPIC_INVERT_SET:
-        logger.info("Invert: %s", msg.payload)
-        state.inverted = msg.payload == b"ON"
-        client.publish(TOPIC_INVERT, msg.payload)
+        if msg.payload in (b"ON", b"OFF"):
+            state.inverted = msg.payload == b"ON"
+            logger.info("Invert set to %s", state.inverted)
+            client.publish(TOPIC_INVERT, msg.payload)
+        else:
+            logger.warning("Invalid payload received for invert state: %s", msg.payload)
 
 
 def mqtt_thread():
@@ -226,11 +243,11 @@ def mqtt_thread():
     if DEBUG:
         host = "localhost"
     client = mqtt.Client()
-    client.enable_logger()
+    client.enable_logger(logger=logger)
     client.on_connect = on_mqtt_connect
     client.on_message = on_mqtt_message
     if user:
-        logger.info(f"Logging into MQTT as {user}")
+        logger.info("Logging into MQTT as %s", user)
         client.username_pw_set(user, password)
     client.connect(host, 1883, 60)
     client.loop_start()
@@ -244,13 +261,13 @@ def mqtt_thread():
 
 def panel_thread():
     """Thread for updating the LED panel."""
-    # pylint: disable=global-statement,global-variable-not-assigned
-    global state
     while state.running:
         if state.powered:
             if state.msg_until is not None:
                 if base_font.string_width(state.message) > PANEL_WIDTH:
-                    bitmap = render_text_bitmap(state.message, int(-state.msg_offset))
+                    new_bitmap = render_text_bitmap(
+                        state.message, int(-state.msg_offset)
+                    )
                     state.msg_offset = (
                         state.msg_offset + state.scroll_interval
                     ) % base_font.string_width(state.message)
@@ -260,25 +277,34 @@ def panel_thread():
                     state.msg_until = None
                     logger.info("Message expired")
             else:
-                bitmap = render_time_bitmap()
-            with hlock:
-                # Invert the bitmap if the inversion state is true
-                if state.inverted:
-                    bitmap = bytearray(~b & 0xFF for b in bitmap)
-                for panel in panels:
-                    panel.set_compiled_image(bitmap)
-            time.sleep(0.02)
+                # Render the time if no message is active
+                new_bitmap = render_time_bitmap()
+            # Invert the bitmap if the inversion state is true
+            if state.inverted:
+                new_bitmap = bytearray(~b & 0xFF for b in bitmap)
+            # Update the panel only if the bitmap has changed
+            if state.bitmap != new_bitmap:
+                with hlock:
+                    for panel in panels:
+                        panel.set_compiled_image(state.bitmap)
+                state.bitmap = new_bitmap
+            # Sleep for a while
+            time.sleep(0.01)
         else:
+            # If the panel is off, sleep for a longer while
             time.sleep(0.2)
 
+    # Turn off the panel
+    # pylint: disable=no-value-for-parameter
     panels[0].set_relay(False)
 
     shutdown_panel()
 
 
 if __name__ == "__main__":
-    logging.info(f"NAME {__name__}")
+    logging.info("NAME %s", __name__)
 
+    # Check if we are running in debug mode. Run as "python3 service.py debug"
     if len(sys.argv) > 1 and sys.argv[1] == "debug":
         DEBUG = True
 
@@ -286,12 +312,14 @@ if __name__ == "__main__":
         print("Could not find all three panels; aborting.")
         sys.exit(0)
 
+    # Turn on the panel
+    # pylint: disable=no-value-for-parameter
     panels[0].set_relay(True)
 
+    # Set up signal handlers to gracefully shut down the service
     def signal_handler(mysignal, frame):
-        # pylint: disable=unused-argument,global-variable-not-assigned
+        # pylint: disable=unused-argument
         """Handle signals gracefully by stopping the main loop."""
-        global state
         signal_name = signal.Signals(mysignal).name
         print(f"Caught {signal_name}; shutting down.")
         state.running = False
@@ -299,6 +327,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
+    # Start the threads to handle the MQTT connection and the panel
     mqtt_thread_instance = threading.Thread(target=mqtt_thread)
     panel_thread_instance = threading.Thread(target=panel_thread)
     panel_thread_instance.start()
