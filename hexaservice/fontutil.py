@@ -130,7 +130,8 @@ class Font:
                 x_pos += self.fontmap[char].size[0]
             else:
                 # if the character is not in the fontmap, use a space
-                logger.warning("Character not found in font: %s", char)
+                if char != " ": # don't log a warning for spaces
+                    logger.warning("Character not found in font: %s", char)
                 x_pos += 2
             # add a pixel between each character
             x_pos += 1
