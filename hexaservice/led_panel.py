@@ -49,9 +49,12 @@ class CommandCode(Enum):
     ones used by this module.
     """
 
-    TEXT = 0xA1 #  
+    STATUS = 0xA0 # 160
+    TEXT = 0xA1 #  161
     BITMAP = 0xA2 # 162
-    GET_ID = 0xA4 # 164
+    SET_ID = 0xA3 # 163
+    QUERY_ID = 0xA4 # 164
+    WRITE_UART = 0xA5 # 165
     RELAY = 0xA6 # 166
 
 
