@@ -53,7 +53,7 @@ class CommandCode(Enum):
     TEXT = 0xA1 #  161
     BITMAP = 0xA2 # 162
     SET_ID = 0xA3 # 163
-    QUERY_ID = 0xA4 # 164
+    GET_ID = 0xA4 # 164
     WRITE_UART = 0xA5 # 165
     RELAY = 0xA6 # 166
 
@@ -118,8 +118,8 @@ def init_panel(debug: bool = False) -> bool:
                 panels[panel.get_id()] = panel
                 logger.info("Candidate %s succeeded", candidate)
             except Exception as exception:
-                panel.close()
                 logger.info("Candidate %s failed, got %s", candidate, exception)
+                panel.close()
         return all(panel is not None for panel in panels)
 
 

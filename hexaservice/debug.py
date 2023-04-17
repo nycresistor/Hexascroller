@@ -96,7 +96,7 @@ def process_command(data: bytes):
     elif command_code == CommandCode.SET_ID.value:
         set_id(payload)
 
-    elif command_code == CommandCode.QUERY_ID.value:
+    elif command_code == CommandCode.GET_ID.value:
         query_id()
 
     elif command_code == CommandCode.WRITE_UART.value:
