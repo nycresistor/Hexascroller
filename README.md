@@ -34,12 +34,14 @@ At Resistor, the service runs in:
 
 Stop/start with
 
-service stop hexascroller
-service start hexascroller
+service hexascroller stop
+service hexascroller start
+service hexascroller restart
 
 Run manually with
 
 ```bash
+sudo apt install git python3-paho-mqtt python3-serial python3-pil
 cd /home/pi/Hexascroller/hexaservice
 MQTT_HOST=mymqtthost.local MQTT_USER=mqttuser MQTT_PASS=verysecret /usr/bin/python3 service.py
 ```
