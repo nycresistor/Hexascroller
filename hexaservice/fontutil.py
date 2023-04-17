@@ -63,8 +63,10 @@ def get_char(img: Image.Image, x_pos: int) -> Tuple[Image.Image, int]:
 
     """
     next_x = x_pos
+    logger.debug("Extracting character at x %d", x_pos)
     while img.getpixel((next_x, 0)) != RED_MARKER:
         next_x += 1
+        logger.debug("Next x: %d", next_x)
     char_img = img.crop((x_pos, 0, next_x, CHAR_HEIGHT))
     return (char_img, next_x + 1)
 
@@ -91,6 +93,7 @@ class Font:
             logger.error("Font file not found: %s", path)
             raise
         for char in inventory:
+            logger.debug("Loading character: %s at x %d", char, x_pos)
             if x_pos >= self.base_img.size[0]:
                 logger.error("Character not found in font image at position %i: '%s'", x_pos, char)
                 continue
@@ -141,7 +144,7 @@ class Font:
 # Initialize the base_font instance
 base_font = Font(
     "basic-font.png",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()#abcdefghijklmnopqrstuvwxyz,=^|-_+'\"",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()#abcdefghijklmnopqrstuvwxyz,=^|-_+'\"~",
 )
 
 if __name__ == "__main__":
