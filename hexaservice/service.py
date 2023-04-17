@@ -151,15 +151,17 @@ def render_time_bitmap() -> bytes:
     """Render local time and Swatch beats into a 2-panel bitmap."""
     beats = internet_time()
     msg = time.strftime("%H:%M:%S")
-    bmsg = f"{beats:06.2f}"
+    bmsg = f"@{beats:06.2f}"
     cached_result = render_cache.get(bmsg + msg)
     if cached_result:
         return cached_result
     img = Image.new("1", (PANEL_WIDTH, PANEL_HEIGHT))
     txtimg = base_font.string_image(msg)
     img.paste(txtimg, (15, 0))
-    txtimg = base_font.string_image(f"{bmsg} .beats")
-    img.paste(txtimg, (62, 0))
+    txtimg = base_font.string_image(f"{bmsg}")
+    img.paste(txtimg, (61, 0))
+    # Paste .beats separately to keep text in the same place
+    img.paste(base_font.string_image(".beats"),(94,0))
     bitmap = compile_image(img, 0, 0)
     render_cache.set(bmsg + msg, bitmap)
     return bitmap
@@ -167,14 +169,14 @@ def render_time_bitmap() -> bytes:
 
 def render_text_bitmap(text: str, offset: int) -> bytes:
     """Render the given text with offset into a 2-panel bitmap."""
-    cached_result = render_cache.get(text)
+    cached_result = render_cache.get(text+str(offset))
     if cached_result:
         return cached_result
     txtimg = base_font.string_image(text)
     img = Image.new("1", (PANEL_WIDTH, PANEL_HEIGHT))
     img.paste(txtimg, (offset, 0))
     bitmap = compile_image(img, 0, 0)
-    render_cache.set(text, bitmap)
+    render_cache.set(text+str(offset), bitmap)
     return bitmap
 
 
@@ -270,6 +272,7 @@ def panel_thread():
         if state.powered:
             if state.msg_until is not None:
                 if base_font.string_width(state.message) > PANEL_WIDTH:
+                    logger.debug("Scrolling message, offset %d", state.msg_offset)
                     new_bitmap = render_text_bitmap(
                         state.message, int(-state.msg_offset)
                     )
@@ -277,7 +280,8 @@ def panel_thread():
                         state.msg_offset + state.scroll_interval
                     ) % base_font.string_width(state.message)
                 else:
-                    bitmap = render_text_bitmap(state.message, 0)
+                    logger.debug("String is shorter (%d) than panel width, no scrolling", base_font.string_width(state.message))
+                    new_bitmap = render_text_bitmap(state.message, 0)
                 if time.time() > state.msg_until:
                     state.msg_until = None
                     logger.info("Message expired")
@@ -313,6 +317,12 @@ if __name__ == "__main__":
     # Check if we are running in debug mode. Run as "python3 service.py debug"
     if len(sys.argv) > 1 and sys.argv[1] == "debug":
         DEBUG = True
+        logging.basicConfig(level=logging.DEBUG)
+        state.inverted = True
+        state.powered = True
+        state.message = "Hello, ~ Resistor! This is a very long message to debug."
+        state.msg_until = time.time() + 12
+        state.scroll_interval = 0.1
 
     if not init_panel(DEBUG):
         print("Could not find all three panels; aborting.")
