@@ -109,6 +109,7 @@ class State:
         self.message: Optional[str] = None
         self.scroll_interval: float = 0.0
         self.power_command: bool = False
+        self.client: mqtt.Client = mqtt.Client()
 
 
 state = State()
@@ -249,7 +250,7 @@ def mqtt_thread():
 
     if DEBUG:
         host = "localhost"
-    client = mqtt.Client()
+    client = state.client
     client.enable_logger(logger=logger)
     client.on_connect = on_mqtt_connect
     client.on_message = on_mqtt_message
@@ -274,7 +275,7 @@ def panel_thread():
             # pylint: disable=no-value-for-parameter
             panels[0].set_relay(state.power_command)
             state.powered = state.power_command
-            client.publish(TOPIC_POWER, msg.payload)
+            state.client.publish(TOPIC_POWER, msg.payload)
         if state.powered:
             if state.msg_until is not None:
                 if base_font.string_width(state.message) > PANEL_WIDTH:
