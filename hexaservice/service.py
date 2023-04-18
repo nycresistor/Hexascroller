@@ -275,7 +275,7 @@ def panel_thread():
             # pylint: disable=no-value-for-parameter
             panels[0].set_relay(state.power_command)
             state.powered = state.power_command
-            state.client.publish(TOPIC_POWER, msg.payload)
+            state.client.publish(TOPIC_POWER, b"ON" if state.powered else b"OFF")
         if state.powered:
             if state.msg_until is not None:
                 if base_font.string_width(state.message) > PANEL_WIDTH:
