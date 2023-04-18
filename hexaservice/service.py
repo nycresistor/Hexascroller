@@ -34,7 +34,7 @@ import os
 import sys
 import time
 import signal
-from threading import Thread, Lock
+from threading import Thread
 from typing import Optional
 
 import paho.mqtt.client as mqtt
@@ -63,9 +63,6 @@ TOPIC_INVERT: str = f"{TOPIC_PREFIX}/invert"
 TOPIC_INVERT_SET: str = f"{TOPIC_INVERT}/set"
 TOPIC_MESSAGE: str = f"{TOPIC_PREFIX}/message"
 TOPIC_AVAILABILITY: str = f"{TOPIC_PREFIX}/available"
-
-# hlock = Lock()
-
 
 @dataclasses.dataclass
 class State:
@@ -101,14 +98,14 @@ class State:
 
     def __init__(self):
         self.bitmap: bytes = b"\0" * PANEL_WIDTH
-        self.running: bool = True
-        self.powered: bool = True
-        self.inverted: bool = False
+        self.running: bool = True # If we're here we're running
+        self.powered: bool = False # Initially off
+        self.inverted: bool = False # Initially not inverted
         self.msg_until: Optional[float] = None
         self.msg_offset: float = 0.0
         self.message: Optional[str] = None
         self.scroll_interval: float = 0.0
-        self.power_command: bool = False
+        self.power_command: bool = True # Power on by default
         self.client: mqtt.Client = mqtt.Client()
 
 
@@ -224,11 +221,6 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
         if msg.payload in (b"ON", b"OFF"):
             state.power_command : bool = msg.payload == b"ON"
             logger.info("Power command set to %s", state.powered)
-            # with hlock:
-            #     # Turn on/off all panels
-            #     # pylint: disable=no-value-for-parameter
-            # panels[0].set_relay(state.powered)
-            # client.publish(TOPIC_POWER, msg.payload)
         else:
             logger.warning("Invalid payload received for power state: %s", msg.payload)
 
@@ -239,33 +231,6 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
             client.publish(TOPIC_INVERT, msg.payload)
         else:
             logger.warning("Invalid payload received for invert state: %s", msg.payload)
-
-
-def mqtt_thread():
-    """Thread for connecting to the MQTT broker."""
-    prctl.set_name("mqtt thread")
-    host = os.environ.get("MQTT_BROKER", "mqttbroker.lan")
-    user = os.environ.get("MQTT_USER")
-    password = os.environ.get("MQTT_PASS")
-
-    if DEBUG:
-        host = "localhost"
-    client = state.client
-    client.enable_logger(logger=logger)
-    client.on_connect = on_mqtt_connect
-    client.on_message = on_mqtt_message
-    if user:
-        logger.info("Logging into MQTT as %s", user)
-        client.username_pw_set(user, password)
-    client.connect(host, 1883, 60)
-    client.loop_start()
-    while state.running:
-        time.sleep(1)
-    client.publish(TOPIC_POWER, b"OFF", qos=0)
-    client.publish(TOPIC_AVAILABILITY, "offline")
-    client.loop_stop()
-    client.disconnect()
-
 
 def panel_thread():
     """Thread for updating the LED panel."""
@@ -300,7 +265,6 @@ def panel_thread():
                 new_bitmap = bytes(~b & 0xFF for b in new_bitmap)
             # Update the panel only if the bitmap has changed
             if state.bitmap != new_bitmap:
-                # with hlock:
                 for panel in panels:
                     # pylint: disable=no-value-for-parameter
                     panel.set_compiled_image(new_bitmap)
@@ -311,10 +275,10 @@ def panel_thread():
             # If the panel is off, sleep for a longer while
             time.sleep(0.2)
 
+    # When we get here, we are shutting down
     # Turn off the panel
     # pylint: disable=no-value-for-parameter
     panels[0].set_relay(False)
-
     shutdown_panel()
 
 
@@ -351,8 +315,34 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
 
     # Start the threads to handle the MQTT connection and the panel
-    mqtt_thread_instance = Thread(target=mqtt_thread, name="MQTT Thread")
+
+    # Initialize the panel code
     panel_thread_instance = Thread(target=panel_thread, name="Panel Thread")
     panel_thread_instance.start()
-    mqtt_thread_instance.start()
+
+
+    host = os.environ.get("MQTT_BROKER", "mqttbroker.lan")
+    user = os.environ.get("MQTT_USER")
+    password = os.environ.get("MQTT_PASS")
+
+    if DEBUG:
+        host = "localhost"
+    client = state.client
+    client.enable_logger(logger=logger)
+    client.on_connect = on_mqtt_connect
+    client.on_message = on_mqtt_message
+    if user:
+        logger.info("Logging into MQTT as %s", user)
+        client.username_pw_set(user, password)
+    client.connect(host, 1883, 60)
+    # Start the MQTT loop in a separate thread
+    client.loop_start()
+
+    # Wait for the panel thread to finish
     panel_thread_instance.join()
+
+    # Shut down the MQTT connection
+    client.publish(TOPIC_POWER, b"OFF", qos=0)
+    client.publish(TOPIC_AVAILABILITY, "offline")
+    client.loop_stop()
+    client.disconnect()
