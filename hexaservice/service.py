@@ -275,9 +275,9 @@ def panel_update():
             state.bitmap = new_bitmap
         # Sleep for a while
         # time.sleep(0.01)
-    else:
-        # If the panel is off, sleep for a longer while
-        time.sleep(0.2)
+    #else:
+    #    # If the panel is off, sleep for a longer while
+    #    time.sleep(0.2)
 
 
 if __name__ == "__main__":
@@ -336,7 +336,8 @@ if __name__ == "__main__":
     client.loop_start()
 
     while state.running:
-        panel_thread()
+        panel_update()
+        # time.sleep(0.01)
     # When we get here, we are shutting down
     # Turn off the panel
     # pylint: disable=no-value-for-parameter
