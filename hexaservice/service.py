@@ -64,7 +64,7 @@ TOPIC_INVERT_SET: str = f"{TOPIC_INVERT}/set"
 TOPIC_MESSAGE: str = f"{TOPIC_PREFIX}/message"
 TOPIC_AVAILABILITY: str = f"{TOPIC_PREFIX}/available"
 
-hlock = Lock()
+# hlock = Lock()
 
 
 @dataclasses.dataclass
@@ -108,6 +108,7 @@ class State:
         self.msg_offset: float = 0.0
         self.message: Optional[str] = None
         self.scroll_interval: float = 0.0
+        self.power_command: bool = False
 
 
 state = State()
@@ -220,13 +221,13 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
             state.scroll_interval = 0
     elif msg.topic == TOPIC_POWER_SET:
         if msg.payload in (b"ON", b"OFF"):
-            state.powered: bool = msg.payload == b"ON"
-            logger.info("Power set to %s", state.powered)
-            with hlock:
-                # Turn on/off all panels
-                # pylint: disable=no-value-for-parameter
-                panels[0].set_relay(state.powered)
-            client.publish(TOPIC_POWER, msg.payload)
+            state.power_command : bool = msg.payload == b"ON"
+            logger.info("Power command set to %s", state.powered)
+            # with hlock:
+            #     # Turn on/off all panels
+            #     # pylint: disable=no-value-for-parameter
+            # panels[0].set_relay(state.powered)
+            # client.publish(TOPIC_POWER, msg.payload)
         else:
             logger.warning("Invalid payload received for power state: %s", msg.payload)
 
@@ -269,6 +270,11 @@ def panel_thread():
     """Thread for updating the LED panel."""
     prctl.set_name("panel thread")
     while state.running:
+        if state.power_command != state.powered:
+            # pylint: disable=no-value-for-parameter
+            panels[0].set_relay(state.power_command)
+            state.powered = state.power_command
+            client.publish(TOPIC_POWER, msg.payload)
         if state.powered:
             if state.msg_until is not None:
                 if base_font.string_width(state.message) > PANEL_WIDTH:
@@ -293,10 +299,10 @@ def panel_thread():
                 new_bitmap = bytes(~b & 0xFF for b in new_bitmap)
             # Update the panel only if the bitmap has changed
             if state.bitmap != new_bitmap:
-                with hlock:
-                    for panel in panels:
-                        # pylint: disable=no-value-for-parameter
-                        panel.set_compiled_image(new_bitmap)
+                # with hlock:
+                for panel in panels:
+                    # pylint: disable=no-value-for-parameter
+                    panel.set_compiled_image(new_bitmap)
                 state.bitmap = new_bitmap
             # Sleep for a while
             time.sleep(0.01)
