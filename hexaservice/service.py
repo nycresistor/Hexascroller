@@ -335,7 +335,7 @@ if __name__ == "__main__":
     # Start the MQTT loop in a separate thread
     client.loop_start()
 
-    while running:
+    while state.running:
         panel_thread()
     # When we get here, we are shutting down
     # Turn off the panel
