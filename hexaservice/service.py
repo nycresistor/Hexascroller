@@ -34,7 +34,8 @@ import os
 import sys
 import time
 import signal
-from threading import Thread
+
+# from threading import Thread
 from typing import Optional
 
 import paho.mqtt.client as mqtt
@@ -63,6 +64,7 @@ TOPIC_INVERT: str = f"{TOPIC_PREFIX}/invert"
 TOPIC_INVERT_SET: str = f"{TOPIC_INVERT}/set"
 TOPIC_MESSAGE: str = f"{TOPIC_PREFIX}/message"
 TOPIC_AVAILABILITY: str = f"{TOPIC_PREFIX}/available"
+
 
 @dataclasses.dataclass
 class State:
@@ -98,14 +100,14 @@ class State:
 
     def __init__(self):
         self.bitmap: bytes = b"\0" * PANEL_WIDTH
-        self.running: bool = True # If we're here we're running
-        self.powered: bool = False # Initially off
-        self.inverted: bool = False # Initially not inverted
+        self.running: bool = True  # If we're here we're running
+        self.powered: bool = False  # Initially off
+        self.inverted: bool = False  # Initially not inverted
         self.msg_until: Optional[float] = None
         self.msg_offset: float = 0.0
         self.message: Optional[str] = None
         self.scroll_interval: float = 0.0
-        self.power_command: bool = True # Power on by default
+        self.power_command: bool = True  # Power on by default
         self.client: mqtt.Client = mqtt.Client()
 
 
@@ -160,7 +162,7 @@ def render_time_bitmap() -> bytes:
     txtimg = base_font.string_image(f"{bmsg}")
     img.paste(txtimg, (61, 0))
     # Paste .beats separately to keep text in the same place
-    img.paste(base_font.string_image(".beats"),(94,0))
+    img.paste(base_font.string_image(".beats"), (94, 0))
     bitmap = compile_image(img, 0, 0)
     render_cache.set(bmsg + msg, bitmap)
     return bitmap
@@ -168,14 +170,14 @@ def render_time_bitmap() -> bytes:
 
 def render_text_bitmap(text: str, offset: int) -> bytes:
     """Render the given text with offset into a 2-panel bitmap."""
-    cached_result = render_cache.get(text+str(offset))
+    cached_result = render_cache.get(text + str(offset))
     if cached_result:
         return cached_result
     txtimg = base_font.string_image(text)
     img = Image.new("1", (PANEL_WIDTH, PANEL_HEIGHT))
     img.paste(txtimg, (offset, 0))
     bitmap = compile_image(img, 0, 0)
-    render_cache.set(text+str(offset), bitmap)
+    render_cache.set(text + str(offset), bitmap)
     return bitmap
 
 
@@ -219,7 +221,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
             state.scroll_interval = 0
     elif msg.topic == TOPIC_POWER_SET:
         if msg.payload in (b"ON", b"OFF"):
-            state.power_command : bool = msg.payload == b"ON"
+            state.power_command: bool = msg.payload == b"ON"
             logger.info("Power command set to %s", state.powered)
         else:
             logger.warning("Invalid payload received for power state: %s", msg.payload)
@@ -232,54 +234,50 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
         else:
             logger.warning("Invalid payload received for invert state: %s", msg.payload)
 
-def panel_thread():
-    """Thread for updating the LED panel."""
-    prctl.set_name("panel thread")
-    while state.running:
-        if state.power_command != state.powered:
-            # pylint: disable=no-value-for-parameter
-            panels[0].set_relay(state.power_command)
-            state.powered = state.power_command
-            state.client.publish(TOPIC_POWER, b"ON" if state.powered else b"OFF")
-        if state.powered:
-            if state.msg_until is not None:
-                if base_font.string_width(state.message) > PANEL_WIDTH:
-                    logger.debug("Scrolling message, offset %d", state.msg_offset)
-                    new_bitmap = render_text_bitmap(
-                        state.message, int(-state.msg_offset)
-                    )
-                    state.msg_offset = (
-                        state.msg_offset + state.scroll_interval
-                    ) % base_font.string_width(state.message)
-                else:
-                    logger.debug("String is shorter (%d) than panel width, no scrolling", base_font.string_width(state.message))
-                    new_bitmap = render_text_bitmap(state.message, 0)
-                if time.time() > state.msg_until:
-                    state.msg_until = None
-                    logger.info("Message expired")
-            else:
-                # Render the time if no message is active
-                new_bitmap = render_time_bitmap()
-            # Invert the bitmap if the inversion state is true
-            if state.inverted:
-                new_bitmap = bytes(~b & 0xFF for b in new_bitmap)
-            # Update the panel only if the bitmap has changed
-            if state.bitmap != new_bitmap:
-                for panel in panels:
-                    # pylint: disable=no-value-for-parameter
-                    panel.set_compiled_image(new_bitmap)
-                state.bitmap = new_bitmap
-            # Sleep for a while
-            time.sleep(0.01)
-        else:
-            # If the panel is off, sleep for a longer while
-            time.sleep(0.2)
 
-    # When we get here, we are shutting down
-    # Turn off the panel
-    # pylint: disable=no-value-for-parameter
-    panels[0].set_relay(False)
-    shutdown_panel()
+def panel_update():
+    """Updates the LED panel."""
+    # prctl.set_name("panel thread")
+    # while state.running:
+    if state.power_command != state.powered:
+        # pylint: disable=no-value-for-parameter
+        panels[0].set_relay(state.power_command)
+        state.powered = state.power_command
+        state.client.publish(TOPIC_POWER, b"ON" if state.powered else b"OFF")
+    if state.powered:
+        if state.msg_until is not None:
+            if base_font.string_width(state.message) > PANEL_WIDTH:
+                logger.debug("Scrolling message, offset %d", state.msg_offset)
+                new_bitmap = render_text_bitmap(state.message, int(-state.msg_offset))
+                state.msg_offset = (
+                    state.msg_offset + state.scroll_interval
+                ) % base_font.string_width(state.message)
+            else:
+                logger.debug(
+                    "String is shorter (%d) than panel width, no scrolling",
+                    base_font.string_width(state.message),
+                )
+                new_bitmap = render_text_bitmap(state.message, 0)
+            if time.time() > state.msg_until:
+                state.msg_until = None
+                logger.info("Message expired")
+        else:
+            # Render the time if no message is active
+            new_bitmap = render_time_bitmap()
+        # Invert the bitmap if the inversion state is true
+        if state.inverted:
+            new_bitmap = bytes(~b & 0xFF for b in new_bitmap)
+        # Update the panel only if the bitmap has changed
+        if state.bitmap != new_bitmap:
+            for panel in panels:
+                # pylint: disable=no-value-for-parameter
+                panel.set_compiled_image(new_bitmap)
+            state.bitmap = new_bitmap
+        # Sleep for a while
+        # time.sleep(0.01)
+    else:
+        # If the panel is off, sleep for a longer while
+        time.sleep(0.2)
 
 
 if __name__ == "__main__":
@@ -317,9 +315,8 @@ if __name__ == "__main__":
     # Start the threads to handle the MQTT connection and the panel
 
     # Initialize the panel code
-    panel_thread_instance = Thread(target=panel_thread, name="Panel Thread")
-    panel_thread_instance.start()
-
+    # panel_thread_instance = Thread(target=panel_thread, name="Panel Thread")
+    # panel_thread_instance.start()
 
     host = os.environ.get("MQTT_BROKER", "mqttbroker.lan")
     user = os.environ.get("MQTT_USER")
@@ -338,8 +335,15 @@ if __name__ == "__main__":
     # Start the MQTT loop in a separate thread
     client.loop_start()
 
+    while running:
+        panel_thread()
+    # When we get here, we are shutting down
+    # Turn off the panel
+    # pylint: disable=no-value-for-parameter
+    panels[0].set_relay(False)
+    shutdown_panel()
     # Wait for the panel thread to finish
-    panel_thread_instance.join()
+    # panel_thread_instance.join()
 
     # Shut down the MQTT connection
     client.publish(TOPIC_POWER, b"OFF", qos=0)
