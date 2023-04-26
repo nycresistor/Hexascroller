@@ -197,7 +197,7 @@ class Panel:
         if self.debug_host:
             self.sock.sendto(packet, (self.debug_host, self.port))
             return b""
-        print("Sending serial packet: ", (''.join('{:02x}'.format(x) for x in packet)), " to ", self.serial_port.name)
+        logger.debug("Sending serial packet to %s: %s", self.serial_port.name, (''.join('{:02x}'.format(x) for x in packet)))
         self.serial_port.write(packet)
         self.serial_port.flush()
         rsp = self.serial_port.read(2)
