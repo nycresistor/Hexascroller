@@ -302,4 +302,4 @@ class Panel:
         return int(self.id)
 
 
-panels: List[Panel] = [Panel(), Panel(), Panel()]
+panels: List[Panel] = [Panel()] * 3
