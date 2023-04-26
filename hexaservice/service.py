@@ -57,7 +57,7 @@ parser.add_argument(
     "--debug-host",
     type=str,
     default="localhost",
-    help="Debug MQTT host address (default: localhost)",
+    help="Debug host address (default: localhost)",
 )
 parser.add_argument(
     "--mqtt-host",
@@ -297,6 +297,7 @@ def panel_update():
             new_bitmap = bytes(~b & 0xFF for b in new_bitmap)
         # Update the panel only if the bitmap has changed
         if state.bitmap != new_bitmap:
+            logger.debug("New bitmap: %s", new_bitmap)
             for panel in panels:
                 # pylint: disable=no-value-for-parameter
                 panel.set_compiled_image(new_bitmap)
@@ -307,20 +308,28 @@ def panel_update():
         # If the panel is off, sleep for a longer while
         time.sleep(0.2)
 
-def main():
-    logging.info("NAME %s", __name__)
 
-    # Check if we are running in debug mode. Run as "python3 service.py debug"
+def main():
+    """Main function."""
+    logger.info("NAME %s", __name__)
+
+    # Check if we are running in debug mode. Run as "python3 service.py --debug"
     if args.debug:
         DEBUG = True
         logging.basicConfig(level=logging.DEBUG)
+        logger.info("Debug mode enabled.")
+        logger.info("Debug host: %s", args.debug_host)
         state.inverted = True
         state.powered = True
         state.message = "Hello, ~ Resistor! This is a very long message to debug."
         state.msg_until = time.time() + 12
         state.scroll_interval = 0.1
+    else:
+        DEBUG = False
+        logger.info("Debug mode disabled.")
+        logging.basicConfig(level=logging.INFO)
 
-    if not init_panel(debug_host=args.debug_host if args.debug else None):
+    if not init_panel(debug_host=args.debug_host if DEBUG else None):
         print("Could not find all three panels; aborting.")
         sys.exit(0)
 
@@ -343,6 +352,7 @@ def main():
     host = args.mqtt_host
     user = args.mqtt_user
     password = args.mqtt_password
+    logger.info("MQTT host: %s, MQTT user: %s", host, user)
 
     # Set up the MQTT client
     client = state.client
@@ -356,7 +366,9 @@ def main():
     # Start the MQTT loop in a separate thread
     client.loop_start()
 
+    print("Running hexaservice. Press Ctrl-C to exit.")
     while state.running:
+        logger.debug("Panel update")
         panel_update()
     # When we get here, we are shutting down
     # Turn off the panel
@@ -371,6 +383,7 @@ def main():
     client.publish(TOPIC_AVAILABILITY, "offline")
     client.loop_stop()
     client.disconnect()
+
 
 if __name__ == "__main__":
     main()

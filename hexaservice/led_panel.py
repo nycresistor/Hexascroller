@@ -98,11 +98,15 @@ def init_panel(debug_host: Optional[str] = None) -> bool:
         bool: True if the panel is successfully initialized, False otherwise.
     """
     # pylint: disable=no-else-return
+    logger.debug("Initializing panel")
     if debug_host:
+        logger.debug("Debug host is %s", debug_host)
         logging.basicConfig(level=logging.DEBUG)
         panel = Panel(debug_host)
         panel.open("debug")
-        panels[panel.get_id()] = panel
+        panels[0] = panel
+        del panels[2]
+        del panels[1]
         return True
     else:
         for candidate in glob.glob("/dev/ttyACM*"):
@@ -135,6 +139,7 @@ class Panel:
     def __init__(self, debug_host: Optional[str] = None) -> None:
         """Initialize the Panel object."""
         self.debug_host = debug_host
+        logger.info("Debug host is %s", debug_host)
         if debug_host:
             self.id = 0  # pylint: disable=invalid-name
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -188,9 +193,11 @@ class Panel:
         packet = struct.pack("BB", command.value, payload_length)
         if payload_length > 0:
             packet = packet + payload
+        logger.debug("Sending UDP packet to %s: %s", self.debug_host, ''.join('{:02x}'.format(x) for x in packet))
         if self.debug_host:
             self.sock.sendto(packet, (self.debug_host, self.port))
             return b""
+        print("Sending serial packet: ", (''.join('{:02x}'.format(x) for x in packet)), " to ", self.serial_port.name)
         self.serial_port.write(packet)
         self.serial_port.flush()
         rsp = self.serial_port.read(2)
@@ -294,12 +301,12 @@ class Panel:
         :return: The ID of the LED panel as an integer.
         """
         if self.debug_host:
-            return self.port
+            return 0
 
         id_value = self.command(CommandCode.GET_ID, b"", 1)
         self.id = int(id_value[0])
         logger.info("ID'd panel %d", self.id)
-        return int(self.id)
+        return self.id
 
 
 panels: List[Panel] = [Panel()] * 3
