@@ -307,8 +307,7 @@ def panel_update():
         # If the panel is off, sleep for a longer while
         time.sleep(0.2)
 
-
-if __name__ == "__main__":
+def main():
     logging.info("NAME %s", __name__)
 
     # Check if we are running in debug mode. Run as "python3 service.py debug"
@@ -372,3 +371,6 @@ if __name__ == "__main__":
     client.publish(TOPIC_AVAILABILITY, "offline")
     client.loop_stop()
     client.disconnect()
+
+if __name__ == "__main__":
+    main()
