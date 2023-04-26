@@ -64,7 +64,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def compile_image(img, x_pos=0, y_pos=0):
+def compile_image(img: Image.Image, x_pos: int = 0, y_pos: int = 0) -> bytes:
     """Compile the given image into a byte sequence for the LED panel.
 
     Args:
@@ -193,11 +193,19 @@ class Panel:
         packet = struct.pack("BB", command.value, payload_length)
         if payload_length > 0:
             packet = packet + payload
-        logger.debug("Sending UDP packet to %s: %s", self.debug_host, ''.join('{:02x}'.format(x) for x in packet))
+        logger.debug(
+            "Sending UDP packet to %s: %s",
+            self.debug_host,
+            "".join("{:02x}".format(x) for x in packet),
+        )
         if self.debug_host:
             self.sock.sendto(packet, (self.debug_host, self.port))
             return b""
-        logger.debug("Sending serial packet to %s: %s", self.serial_port.name, (''.join('{:02x}'.format(x) for x in packet)))
+        logger.debug(
+            "Sending serial packet to %s: %s",
+            self.serial_port.name,
+            ("".join("{:02x}".format(x) for x in packet)),
+        )
         self.serial_port.write(packet)
         self.serial_port.flush()
         rsp = self.serial_port.read(2)
