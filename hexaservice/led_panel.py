@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 
 """
-led_panel.py
-
 This module contains functions and classes to control an LED panel.
 
 It provides the following functionality:
@@ -30,12 +28,12 @@ The Raspberry Pi is also connected to a 5V power supply via a micro USB cable.
 """
 
 import glob
-import sys
+import socket
 import struct
-import time
+import sys
 import logging
 from enum import Enum
-from typing import List
+from typing import List, Optional
 from PIL import Image
 import serial
 
@@ -49,13 +47,13 @@ class CommandCode(Enum):
     ones used by this module.
     """
 
-    STATUS = 0xA0 # 160
-    TEXT = 0xA1 #  161
-    BITMAP = 0xA2 # 162
-    SET_ID = 0xA3 # 163
-    GET_ID = 0xA4 # 164
-    WRITE_UART = 0xA5 # 165
-    RELAY = 0xA6 # 166
+    STATUS = 0xA0  # 160
+    TEXT = 0xA1  # 161
+    BITMAP = 0xA2  # 162
+    SET_ID = 0xA3  # 163
+    GET_ID = 0xA4  # 164
+    WRITE_UART = 0xA5  # 165
+    RELAY = 0xA6  # 166
 
 
 PANEL_HEIGHT = 7
@@ -90,24 +88,21 @@ def compile_image(img, x_pos=0, y_pos=0):
     return bitmap
 
 
-def init_panel(debug: bool = False) -> bool:
+def init_panel(debug_host: Optional[str] = None) -> bool:
     """Initialize the LED panel.
 
     Args:
-        debug (bool, optional): True for debugging mode. Defaults to False.
+        debug_host (str, optional): Host to send debug messages to. Defaults to None.
 
     Returns:
         bool: True if the panel is successfully initialized, False otherwise.
     """
     # pylint: disable=no-else-return
-    if debug:
+    if debug_host:
         logging.basicConfig(level=logging.DEBUG)
-        for port_num in range(0, 3):
-            port = 9990 + port_num
-            panel = Panel(port_num)
-            panel.open(port)
-            panels[port_num] = panel
-            time.sleep(0.1)
+        panel = Panel(debug_host)
+        panel.open("debug")
+        panels[panel.get_id()] = panel
         return True
     else:
         for candidate in glob.glob("/dev/ttyACM*"):
@@ -125,27 +120,28 @@ def init_panel(debug: bool = False) -> bool:
 
 def shutdown_panel():
     """Shut down the LED panel. Closes the serial ports."""
-    for p in panels:
-        p.close()
+    for panel in panels:
+        panel.close()
 
 
 class Panel:
     """
-    A class representing an individual LED panel. It can be used to set the message
-    on the panel, set the image on the panel, and turn the relay on or off.
-    Hexascroller has 3 panels, so there are 3 instances of this class.
+    A class representing an individual LED panel.
+
+    It can be used to set the message on the panel, set the image on the panel, and turn the
+    relay on or off. Hexascroller has 3 panels, so there are 3 instances of this class.
     """
 
-    def __init__(self, debug: bool = False) -> None:
-        self.serial_port = None
-
-        if debug is not False:
-            self.debug = True
-            self.id = debug
-            self.sock = None
-            self.port = None
+    def __init__(self, debug_host: Optional[str] = None) -> None:
+        """Initialize the Panel object."""
+        if debug_host:
+            self.debug_host = debug_host
+            self.id = 0  # pylint: disable=invalid-name
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.port = 9990
         else:
-            self.debug = False
+            self.serial_port = serial.Serial()
+            self.id = -1
 
     def open(self, port_name: str, baud: int = 9600) -> None:
         """Open a connection to the LED panel.
@@ -155,12 +151,10 @@ class Panel:
             baud (int, optional): The baud rate for the serial connection.
                                   Defaults to 9600.
         """
-        if self.debug:
-            import socket
-
-            logger.info("Opening UDP socket to localhost : %d", port_name)
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.port = port_name
+        if port_name == "debug":
+            logger.info(
+                "Will use UDP socket to debug_host %s : %d", self.debug_host, self.port
+            )
 
         else:
             self.serial_port = serial.Serial(port_name, baud, timeout=0.5)
@@ -173,7 +167,7 @@ class Panel:
             except serial.SerialException as serial_exception:
                 logger.error(
                     "Could not open serial port %s: %s",
-                    self.serial_port.portstr,
+                    port_name,
                     serial_exception,
                 )
                 sys.exit(1)
@@ -188,14 +182,17 @@ class Panel:
         :return: The response payload as bytes.
         """
         payload_length = len(payload)
-        logger.debug("Sending command %s, payload length %i", command.value, payload_length)
+        logger.debug(
+            "Sending command %s, payload length %i", command.value, payload_length
+        )
         packet = struct.pack("BB", command.value, payload_length)
         if payload_length > 0:
             packet = packet + payload
-        if self.debug:
-            self.sock.sendto(packet, ("127.0.0.1", self.port))
+        if self.debug_host:
+            self.sock.sendto(packet, (self.debug_host, self.port))
             return b""
         self.serial_port.write(packet)
+        self.serial_port.flush()
         rsp = self.serial_port.read(2)
         if len(rsp) < 2 or rsp[0] != 0:
             if len(rsp) == 2:
@@ -216,12 +213,11 @@ class Panel:
         return response_payload
 
     def close(self):
-        """
-        Close the connection to the LED panel.
-        """
-        if self.debug:
+        """Close the connection to the LED panel."""
+        if self.debug_host:
             return
-        self.serial_port.close()
+        else:
+            self.serial_port.close()
 
     # pylint: disable=invalid-name
     def set_relay(self, on: bool) -> None:
@@ -247,7 +243,7 @@ class Panel:
         """
         if not isinstance(message, str):
             raise ValueError("Message must be a string.")
-        if not (0 <= x_pos < PANEL_WIDTH) or not (0 <= y_pos < PANEL_HEIGHT):
+        if not 0 <= x_pos < PANEL_WIDTH or not 0 <= y_pos < PANEL_HEIGHT:
             raise ValueError(
                 f"Invalid x, y coordinates. Must be within panel dimensions ({PANEL_WIDTH}, {PANEL_HEIGHT})."
             )
@@ -266,7 +262,7 @@ class Panel:
         """
         if not isinstance(img, Image.Image):
             raise ValueError("Image must be a PIL.Image.Image object.")
-        if not (0 <= x_pos < PANEL_WIDTH) or not (0 <= y_pos < PANEL_HEIGHT):
+        if not 0 <= x_pos < PANEL_WIDTH or not 0 <= y_pos < PANEL_HEIGHT:
             raise ValueError(
                 f"Invalid x, y coordinates. Must be within panel dimensions ({PANEL_WIDTH}, {PANEL_HEIGHT})."
             )
@@ -280,7 +276,9 @@ class Panel:
         :param bitmap: The precompiled image bitmap.
         """
         if not isinstance(bitmap, bytes):
-            raise ValueError(f"Bitmap must be a bytes object. instead got: {type(bitmap)}")
+            raise ValueError(
+                f"Bitmap must be a bytes object. instead got: {type(bitmap)}"
+            )
         if len(bitmap) != PANEL_WIDTH:
             raise ValueError(
                 f"Bitmap length must be equal to number of panel width ({PANEL_WIDTH} bytes). Instead got {len(bitmap)} bytes."
@@ -295,13 +293,13 @@ class Panel:
 
         :return: The ID of the LED panel as an integer.
         """
-        if self.debug:
-            return self.id
+        if self.debug_host:
+            return self.port
 
         id_value = self.command(CommandCode.GET_ID, b"", 1)
-        self.id = id_value[0]
+        self.id = int(id_value[0])
         logger.info("ID'd panel %d", self.id)
-        return self.id
+        return int(self.id)
 
 
-panels: List[Panel] = [Panel] * 3
+panels: List[Panel] = [Panel(), Panel(), Panel()]

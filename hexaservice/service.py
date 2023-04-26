@@ -1,9 +1,10 @@
 #!/usr/bin/python3
-"""This program is a service that controls the hexascroller LED panel display, rendering
-messages and time information. It communicates with an MQTT broker to receive commands and
-updates from other devices or applications. The LED panel displays messages or local time
-and Swatch Internet Time. When a new message is received, it is displayed on the panel, and
-after a specified period (MSG_DURATION), the display reverts to showing the time.
+"""A service that controls the hexascroller LED panels, rendering messages and time.
+
+It communicates with an MQTT broker to receive commands and updates from other devices or
+applications. The LED panel displays messages or local time and Swatch Internet Time.
+When a new message is received, it is displayed on the panel, and after a specified
+period (MSG_DURATION), the display reverts to showing the time.
 
 The mqtt topics this service subscribes to are as follows:
 
@@ -30,17 +31,15 @@ The service also publishes an availability topic:
 
 import dataclasses
 import logging
-import os
 import sys
 import time
 import signal
+import argparse
 
-# from threading import Thread
 from typing import Optional
 
 import paho.mqtt.client as mqtt
 from PIL import Image
-import prctl
 
 from led_panel import (
     panels,
@@ -52,10 +51,39 @@ from led_panel import (
 )
 from fontutil import base_font
 
-logging.basicConfig(level=logging.DEBUG if "debug" in sys.argv else logging.INFO)
+parser = argparse.ArgumentParser(description='Hexascroller LED panel display service')
+parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+parser.add_argument(
+    "--debug-host",
+    type=str,
+    default="localhost",
+    help="Debug MQTT host address (default: localhost)",
+)
+parser.add_argument(
+    "--mqtt-host",
+    type=str,
+    default="mqttbroker.lan",
+    help="MQTT host address (default: mqttbroker.lan)",
+)
+parser.add_argument(
+    "--mqtt-user",
+    type=str,
+    default=None,
+    help="MQTT user (default: None)",
+)
+parser.add_argument(
+    "--mqtt-password",
+    type=str,
+    default=None,
+    help="MQTT password (default: None)",
+)
+
+args = parser.parse_args()
+
+logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
 logger = logging.getLogger(__name__)
 
-DEBUG = False
+DEBUG = args.debug
 MSG_DURATION: float = 30.0
 TOPIC_PREFIX: str = "hexascroller"
 TOPIC_POWER: str = f"{TOPIC_PREFIX}/power"
@@ -70,9 +98,10 @@ TOPIC_AVAILABILITY: str = f"{TOPIC_PREFIX}/available"
 class State:
     # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """
-    Represents the state of a hexascroller LED panel display service. The service controls the panel
-    display, rendering messages and time information, and communicates with an MQTT broker to
-    receive commands and updates.
+    Represents the state of a hexascroller LED panel display service.
+
+    The service controls the panel display, rendering messages and time information,
+    and communicates with an MQTT broker to receive commands and updates.
 
     This is a simple data class or struct class that only stores state. It has no methods.
 
@@ -99,13 +128,14 @@ class State:
     """
 
     def __init__(self):
+        """Initialise the state of the service."""
         self.bitmap: bytes = b"\0" * PANEL_WIDTH
         self.running: bool = True  # If we're here we're running
         self.powered: bool = False  # Initially off
         self.inverted: bool = False  # Initially not inverted
         self.msg_until: Optional[float] = None
         self.msg_offset: float = 0.0
-        self.message: Optional[str] = None
+        self.message: str = "Main screen turn on"
         self.scroll_interval: float = 0.0
         self.power_command: bool = True  # Power on by default
         self.client: mqtt.Client = mqtt.Client()
@@ -125,6 +155,7 @@ class SimpleCache:
     """
 
     def __init__(self):
+        """Initialise the simple cache."""
         self.key = None
         self.value = None
 
@@ -221,7 +252,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
             state.scroll_interval = 0
     elif msg.topic == TOPIC_POWER_SET:
         if msg.payload in (b"ON", b"OFF"):
-            state.power_command: bool = msg.payload == b"ON"
+            state.power_command = msg.payload == b"ON"
             logger.info("Power command set to %s", state.powered)
         else:
             logger.warning("Invalid payload received for power state: %s", msg.payload)
@@ -237,10 +268,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
 
 def panel_update():
     """Updates the LED panel."""
-    # prctl.set_name("panel thread")
-    # while state.running:
     if state.power_command != state.powered:
-        # pylint: disable=no-value-for-parameter
         panels[0].set_relay(state.power_command)
         state.powered = state.power_command
         state.client.publish(TOPIC_POWER, b"ON" if state.powered else b"OFF")
@@ -274,17 +302,14 @@ def panel_update():
                 panel.set_compiled_image(new_bitmap)
             state.bitmap = new_bitmap
         # Sleep for a while
-        # time.sleep(0.01)
-    #else:
-    #    # If the panel is off, sleep for a longer while
-    #    time.sleep(0.2)
+        time.sleep(0.01)
 
 
 if __name__ == "__main__":
     logging.info("NAME %s", __name__)
 
     # Check if we are running in debug mode. Run as "python3 service.py debug"
-    if len(sys.argv) > 1 and sys.argv[1] == "debug":
+    if args.debug:
         DEBUG = True
         logging.basicConfig(level=logging.DEBUG)
         state.inverted = True
@@ -293,7 +318,7 @@ if __name__ == "__main__":
         state.msg_until = time.time() + 12
         state.scroll_interval = 0.1
 
-    if not init_panel(DEBUG):
+    if not init_panel(debug_host=args.debug_host):
         print("Could not find all three panels; aborting.")
         sys.exit(0)
 
@@ -312,18 +337,12 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    # Start the threads to handle the MQTT connection and the panel
+    # Parse the command line arguments
+    host = args.mqtt_host
+    user = args.mqtt_user
+    password = args.mqtt_password
 
-    # Initialize the panel code
-    # panel_thread_instance = Thread(target=panel_thread, name="Panel Thread")
-    # panel_thread_instance.start()
-
-    host = os.environ.get("MQTT_BROKER", "mqttbroker.lan")
-    user = os.environ.get("MQTT_USER")
-    password = os.environ.get("MQTT_PASS")
-
-    if DEBUG:
-        host = "localhost"
+    # Set up the MQTT client
     client = state.client
     client.enable_logger(logger=logger)
     client.on_connect = on_mqtt_connect
@@ -337,7 +356,7 @@ if __name__ == "__main__":
 
     while state.running:
         panel_update()
-        # time.sleep(0.01)
+        time.sleep(0.01)
     # When we get here, we are shutting down
     # Turn off the panel
     # pylint: disable=no-value-for-parameter

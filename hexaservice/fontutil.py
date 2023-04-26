@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 """
-`fontutil` is a Python module for working with custom bitmap fonts. The module provides
- a `Font` class that can be used to load a bitmap font image and its inventory of
- characters, calculate the width of a given string, and generate a single image
- representing the input string using the loaded font.
+A Python module for working with custom bitmap fonts.
+
+The module provides a `Font` class that can be used to load a bitmap font image
+and its inventory of characters, calculate the width of a given string, and generate
+a single image representing the input string using the loaded font.
 
 The bitmap font image should have the characters separated by a red marker (255, 0, 0)
 at the top of each character. The height of each character should be consistent, and
@@ -28,7 +29,7 @@ from fontutil import Font
 
 base_font = Font(
     "basic-font.png",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!?@/:;()#abcdefghijklmnopqrstuvwxyz,=^|-_+'\"",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 )
 
 test_string = "Hello world!"
@@ -51,6 +52,7 @@ logger = logging.getLogger(__name__)
 def get_char(img: Image.Image, x_pos: int) -> Tuple[Image.Image, int]:
     """
     Extract the character starting at x in img.
+
     Uses a pixel of value RED_MARKER as the limit marker.
 
     Args:
@@ -73,8 +75,9 @@ def get_char(img: Image.Image, x_pos: int) -> Tuple[Image.Image, int]:
 
 class Font:
     """
-    A class representing a bitmap font with methods to calculate string widths and
-    generate images of strings.
+    A class representing a bitmap font.
+
+    Has methods to calculate string widths and generate images of strings.
     """
 
     def __init__(self, path: str, inventory: str):
@@ -133,7 +136,7 @@ class Font:
                 x_pos += self.fontmap[char].size[0]
             else:
                 # if the character is not in the fontmap, use a space
-                if char != " ": # don't log a warning for spaces
+                if char != " ":  # don't log a warning for spaces
                     logger.warning("Character not found in font: %s", char)
                 x_pos += 2
             # add a pixel between each character
