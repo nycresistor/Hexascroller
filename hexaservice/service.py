@@ -320,7 +320,7 @@ def main():
         state.msg_until = time.time() + 12
         state.scroll_interval = 0.1
 
-    if not init_panel(debug_host=args.debug_host):
+    if not init_panel(debug_host=args.debug_host if args.debug else None):
         print("Could not find all three panels; aborting.")
         sys.exit(0)
 

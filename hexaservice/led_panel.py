@@ -134,8 +134,8 @@ class Panel:
 
     def __init__(self, debug_host: Optional[str] = None) -> None:
         """Initialize the Panel object."""
+        self.debug_host = debug_host
         if debug_host:
-            self.debug_host = debug_host
             self.id = 0  # pylint: disable=invalid-name
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.port = 9990
