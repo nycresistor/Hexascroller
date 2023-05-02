@@ -381,6 +381,8 @@ def main():
     # Shut down the MQTT connection
     client.publish(TOPIC_POWER, b"OFF", qos=0)
     client.publish(TOPIC_AVAILABILITY, "offline")
+    publish_result = client.publish(TOPIC_AVAILABILITY, "offline", retain = True)
+    publish_result.wait_for_publish() 
     client.loop_stop()
     client.disconnect()
 
