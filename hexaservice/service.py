@@ -80,7 +80,11 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG if args.debug else logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 DEBUG = args.debug
