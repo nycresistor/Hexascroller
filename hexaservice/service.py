@@ -80,14 +80,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-logging.basicConfig(
-    level=logging.DEBUG if args.debug else logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%dT%H:%M:%S",
-)
+
 logger = logging.getLogger(__name__)
 
-DEBUG = args.debug
 MSG_DURATION: float = 30.0
 TOPIC_PREFIX: str = "hexascroller"
 TOPIC_POWER: str = f"{TOPIC_PREFIX}/power"
@@ -315,12 +310,15 @@ def panel_update():
 
 def main():
     """Main function."""
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    )
     logger.info("NAME %s", __name__)
 
     # Check if we are running in debug mode. Run as "python3 service.py --debug"
     if args.debug:
-        DEBUG = True
-        logging.basicConfig(level=logging.DEBUG)
         logger.info("Debug mode enabled.")
         logger.info("Debug host: %s", args.debug_host)
         state.inverted = True
@@ -329,11 +327,9 @@ def main():
         state.msg_until = time.time() + 12
         state.scroll_interval = 0.1
     else:
-        DEBUG = False
-        logger.info("Debug mode disabled.")
-        logging.basicConfig(level=logging.INFO)
+        logger.info("Debug mode not enabled.")
 
-    if not init_panel(debug_host=args.debug_host if DEBUG else None):
+    if not init_panel(debug_host=args.debug_host if args.debug else None):
         print("Could not find all three panels; aborting.")
         sys.exit(0)
 

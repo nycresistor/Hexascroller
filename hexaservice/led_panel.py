@@ -60,7 +60,6 @@ PANEL_HEIGHT = 7
 PANEL_WIDTH = 120
 
 # Configuring logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
