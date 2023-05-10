@@ -222,9 +222,9 @@ def on_mqtt_connect(client: mqtt.Client, userdata, flags, resultcode):
         resultcode,
         userdata,
     )
-    client.publish(TOPIC_AVAILABILITY, "online")
-    client.publish(TOPIC_POWER, power_state, qos=0)
-    client.publish(TOPIC_INVERT, invert_state, qos=0)
+    client.publish(TOPIC_AVAILABILITY, "online", retain=True)
+    client.publish(TOPIC_POWER, power_state, qos=0, retain=True)
+    client.publish(TOPIC_INVERT, invert_state, qos=0, retain=True)
     client.subscribe(TOPIC_POWER_SET, qos=0)
     client.subscribe(TOPIC_MESSAGE, qos=0)
     client.subscribe(TOPIC_INVERT_SET, qos=0)
