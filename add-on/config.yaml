@@ -1,0 +1,24 @@
+name: "Hexascroller"
+description: "A Home Assistant add-on to control a hexagonal LED matrix display over USB-to-serial. Automatically gets MQTT info from Home Assistant."
+version: "0.0.11"
+slug: "hexascroller"
+init: false
+realtime: true
+options:
+  debug: false
+  debug_host: localhost
+schema:
+  debug: bool
+  debug_host: str
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+devices:
+  - "/dev/ttyACM0"
+  - "/dev/ttyACM1"
+  - "/dev/ttyACM2"
+services:
+  - mqtt:need
