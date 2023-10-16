@@ -362,7 +362,7 @@ def main():
     if user:
         logger.info("Logging into MQTT as %s", user)
         client.username_pw_set(user, password)
-    client.connect(host, 1883, 60)
+    client.connect_async(host, 1883, 60)
     # Start the MQTT loop in a separate thread
     client.loop_start()
 
