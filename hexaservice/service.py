@@ -35,6 +35,7 @@ import sys
 import time
 import signal
 import argparse
+import os
 
 from typing import Optional
 
@@ -51,6 +52,10 @@ from led_panel import (
 )
 from fontutil import base_font
 
+default_mqtt_host = os.environ.get("MQTT_BROKER", "mqttbroker.lan")
+default_mqtt_user = os.environ.get("MQTT_USER")
+default_mqtt_pass = os.environ.get("MQTT_PASS")
+
 parser = argparse.ArgumentParser(description='Hexascroller LED panel display service')
 parser.add_argument('--debug', action='store_true', help='Enable debug mode')
 parser.add_argument(
@@ -62,19 +67,19 @@ parser.add_argument(
 parser.add_argument(
     "--mqtt-host",
     type=str,
-    default="mqttbroker.lan",
+    default=default_mqtt_host,
     help="MQTT host address (default: mqttbroker.lan)",
 )
 parser.add_argument(
     "--mqtt-user",
     type=str,
-    default=None,
+    default=default_mqtt_user,
     help="MQTT user (default: None)",
 )
 parser.add_argument(
     "--mqtt-password",
     type=str,
-    default=None,
+    default=default_mqtt_pass,
     help="MQTT password (default: None)",
 )
 
