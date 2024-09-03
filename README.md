@@ -30,7 +30,7 @@
 
 At Resistor, the service runs in:
 
-/home/pi/Hexascroller/hexaservice
+/home/nycr/Hexascroller/hexaservice
 
 Stop/start with
 
