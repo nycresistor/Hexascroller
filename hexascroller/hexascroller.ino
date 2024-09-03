@@ -244,7 +244,7 @@ void setup() {
   TIMSK3 = _BV(OCIE3A);
   OCR3A = 200;
 
-  COMM_PORT.begin(9600);
+  COMM_PORT.begin(57600);
   COMM_PORT.setTimeout(90);
   ACC_PORT.begin(9600);
   
@@ -326,6 +326,33 @@ void loop() {
           case 0xB2: // flip
             b.flip();
             succeed();
+            break;
+          // jmgrosen: the Arduino serial buffer is only 64 bytes long
+          // on a 32u4. Thus, when receiving a 122-byte-long message,
+          // if there's any delay in reading out into our own buffer,
+          // the Arduino buffer can fill, messing things up
+          // significantly. The ability to write just half of the
+          // display (a 62-byte-long message) allows us to fit within
+          // the 64 bytes and not have to win a race. We only add a
+          // command to do it into the back buffer so that the
+          // intermediate state isn't seen.
+          case 0xB3: // write first half of back buffer
+            {
+              uint8_t* buffer = b.getBuffer();
+              for (uint8_t i = 0; i < columns/2; i++) {
+                buffer[i] = pl[i];
+              }
+              succeed();
+            }
+            break;
+          case 0xB4: // write second half of back buffer
+            {
+              uint8_t* buffer = b.getBuffer();
+              for (uint8_t i = 0; i < columns/2; i++) {
+                buffer[columns/2 + i] = pl[i];
+              }
+              succeed();
+            }
             break;
           case 0xA1: // text
             b.erase();

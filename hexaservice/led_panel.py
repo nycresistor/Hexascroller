@@ -54,6 +54,9 @@ class CommandCode(Enum):
     GET_ID = 0xA4  # 164
     WRITE_UART = 0xA5  # 165
     RELAY = 0xA6  # 166
+    FLIP_BUFFERS = 0xB2
+    BITMAP_BACK_HALF_ONE = 0xB3
+    BITMAP_BACK_HALF_TWO = 0xB4
 
 
 PANEL_HEIGHT = 7
@@ -147,13 +150,13 @@ class Panel:
             self.serial_port = serial.Serial()
             self.id = -1
 
-    def open(self, port_name: str, baud: int = 9600) -> None:
+    def open(self, port_name: str, baud: int = 57600) -> None:
         """Open a connection to the LED panel.
 
         Args:
             port_name (str): The port name to use for the connection.
             baud (int, optional): The baud rate for the serial connection.
-                                  Defaults to 9600.
+                                  Defaults to 57600.
         """
         if port_name == "debug":
             logger.info(
@@ -298,8 +301,9 @@ class Panel:
                 f"Bitmap length must be equal to number of panel width ({PANEL_WIDTH} bytes). Instead got {len(bitmap)} bytes."
             )
 
-        # For some reason, the BITMAP command returns a status code of 1 instead of 0.
-        self.command(CommandCode.BITMAP, bitmap, 1)
+        self.command(CommandCode.BITMAP_BACK_HALF_ONE, bitmap[:PANEL_WIDTH//2], 0)
+        self.command(CommandCode.BITMAP_BACK_HALF_TWO, bitmap[PANEL_WIDTH//2:], 0)
+        self.command(CommandCode.FLIP_BUFFERS, b"", 0)
 
     def get_id(self) -> int:
         """
