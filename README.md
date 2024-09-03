@@ -42,7 +42,7 @@ Run manually with
 
 ```bash
 sudo apt install git python3-paho-mqtt python3-serial python3-pil
-cd /home/pi/Hexascroller/hexaservice
+cd /home/nycr/Hexascroller/hexaservice
 MQTT_HOST=mymqtthost.local MQTT_USER=mqttuser MQTT_PASS=verysecret /usr/bin/python3 service.py
 ```
 
