@@ -6,7 +6,7 @@ After=syslog.target
 Environment=MQTT_BROKER=homeassistant.local
 Environment=MQTT_USER=mqttbroker
 Environment=MQTT_PASS=None
-WorkingDirectory=/home/pi/Hexascroller/hexaservice
+WorkingDirectory=/home/nycr/Hexascroller/hexaservice
 ExecStart=/usr/bin/python3 ./service.py
 Restart=always
 
