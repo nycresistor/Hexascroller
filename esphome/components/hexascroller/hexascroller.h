@@ -7,6 +7,7 @@
 class HexascrollerComponent : public esphome::Component {
  public:
   HexascrollerComponent();
+  virtual ~HexascrollerComponent() = default;
 
   void setup() override;
   void update() override;
