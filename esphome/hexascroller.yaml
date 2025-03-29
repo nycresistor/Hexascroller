@@ -1,0 +1,42 @@
+esphome:
+  name: hexascroller
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: "YOUR_WIFI_SSID"
+  password: "YOUR_WIFI_PASSWORD"
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Hexascroller Fallback Hotspot"
+    password: "fallback_password"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API and create custom services.
+api:
+  services:
+    - service: display_message
+      variables:
+        message: string
+      then:
+        - lambda: |-
+            id(hexascroller)->display_message(message);
+    - service: show_time
+      then:
+        - lambda: |-
+            id(hexascroller)->display_time();
+
+ota:
+
+# Register our custom component
+custom_component:
+  - lambda: |-
+      auto hexascroller = new HexascrollerComponent();
+      App.register_component(hexascroller);
+      return {hexascroller};
+    update_interval: 1s
+    id: hexascroller
