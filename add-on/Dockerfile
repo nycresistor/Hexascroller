@@ -5,9 +5,12 @@ FROM $BUILD_FROM
 RUN apk add --no-cache git python3 uv
 WORKDIR /app
 
-# clone service and create venv
-RUN git clone https://github.com/nycresistor/Hexascroller.git /app/Hexascroller \
-&& uv venv /app/venv
+# clone service
+RUN git clone https://github.com/nycresistor/Hexascroller.git /app/Hexascroller
+
+# create venv and add to PATH
+RUN uv venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
 
 # install deps & package
 WORKDIR /app/Hexascroller/hexaservice
