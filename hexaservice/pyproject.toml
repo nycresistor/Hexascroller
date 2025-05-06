@@ -1,0 +1,20 @@
+[project]
+name = "hexaservice"
+version = "0.1.0"
+description = "Service python script to drive hexascroller modules over serial"
+authors = [
+    { name = "Guillaume RISCHARD", email = "git@stereo.lu" }
+]
+requires-python = ">=3.9"
+dependencies = [
+  "pillow==10.0.0",
+  "paho-mqtt==1.6.1",
+  "pyserial==3.5",
+]
+
+[project.scripts]
+hexaservice = "service:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
