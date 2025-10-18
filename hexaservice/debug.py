@@ -2,7 +2,7 @@
 import os
 import socket
 from typing import List
-from led_panel import CommandCode, PANEL_HEIGHT, PANEL_WIDTH
+from led_panel import CommandCode, PANEL_HEIGHT
 
 UDP_IP = "0.0.0.0"
 UDP_PORT = 9990
