@@ -301,8 +301,8 @@ class Panel:
                 f"Bitmap length must be equal to number of panel width ({PANEL_WIDTH} bytes). Instead got {len(bitmap)} bytes."
             )
 
-        self.command(CommandCode.BITMAP_BACK_HALF_ONE, bitmap[:PANEL_WIDTH//2], 0)
-        self.command(CommandCode.BITMAP_BACK_HALF_TWO, bitmap[PANEL_WIDTH//2:], 0)
+        self.command(CommandCode.BITMAP_BACK_HALF_ONE, bitmap[: PANEL_WIDTH // 2], 0)
+        self.command(CommandCode.BITMAP_BACK_HALF_TWO, bitmap[PANEL_WIDTH // 2 :], 0)
         self.command(CommandCode.FLIP_BUFFERS, b"", 0)
 
     def get_id(self) -> int:

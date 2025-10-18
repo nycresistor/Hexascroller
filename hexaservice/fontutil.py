@@ -98,7 +98,11 @@ class Font:
         for char in inventory:
             logger.debug("Loading character: %s at x %d", char, x_pos)
             if x_pos >= self.base_img.size[0]:
-                logger.error("Character not found in font image at position %i: '%s'", x_pos, char)
+                logger.error(
+                    "Character not found in font image at position %i: '%s'",
+                    x_pos,
+                    char,
+                )
                 continue
             (char_img, x_pos) = get_char(self.base_img, x_pos)
             self.fontmap[char] = ImageChops.invert(char_img)

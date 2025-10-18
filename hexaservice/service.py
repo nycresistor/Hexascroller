@@ -56,8 +56,8 @@ default_mqtt_host = os.environ.get("MQTT_BROKER", "mqttbroker.lan")
 default_mqtt_user = os.environ.get("MQTT_USER")
 default_mqtt_pass = os.environ.get("MQTT_PASS")
 
-parser = argparse.ArgumentParser(description='Hexascroller LED panel display service')
-parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+parser = argparse.ArgumentParser(description="Hexascroller LED panel display service")
+parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 parser.add_argument(
     "--debug-host",
     type=str,
@@ -386,8 +386,8 @@ def main():
     # Shut down the MQTT connection
     client.publish(TOPIC_POWER, b"OFF", qos=0)
     client.publish(TOPIC_AVAILABILITY, "offline")
-    publish_result = client.publish(TOPIC_AVAILABILITY, "offline", retain = True)
-    publish_result.wait_for_publish() 
+    publish_result = client.publish(TOPIC_AVAILABILITY, "offline", retain=True)
+    publish_result.wait_for_publish()
     client.loop_stop()
     client.disconnect()
 
