@@ -89,6 +89,8 @@ args = parser.parse_args()
 logger = logging.getLogger(__name__)
 
 MSG_DURATION: float = 30.0
+SCROLL_INTERVAL: float = 0.08
+SCROLL_END_PAUSE: float = 3.0
 TOPIC_PREFIX: str = "hexascroller"
 TOPIC_POWER: str = f"{TOPIC_PREFIX}/power"
 TOPIC_POWER_SET: str = f"{TOPIC_POWER}/set"
@@ -128,7 +130,8 @@ class State:
         Set through the MQTT message topic.
     scroll_interval : float
         Represents the time interval (in seconds) between successive horizontal scrolling steps.
-        Set dynamically based on the length of the message.
+    scroll_started_at : Optional[float]
+        The time when the current message started scrolling.
     """
 
     def __init__(self):
@@ -141,6 +144,7 @@ class State:
         self.msg_offset: float = 0.0
         self.message: str = "Main screen turn on"
         self.scroll_interval: float = 0.0
+        self.scroll_started_at: Optional[float] = None
         self.power_command: bool = True  # Power on by default
         self.client: mqtt.Client = mqtt.Client()
 
@@ -239,21 +243,29 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
     """Callback function when the MQTT client receives a message."""
     logger.info("MQTT message received: %s, user data %s", msg.topic, userdata)
     if msg.topic == TOPIC_MESSAGE:
+        now = time.time()
         state.msg_offset = 0
+        state.scroll_started_at = now
         state.message = msg.payload.decode()
         logger.info("Message received: %s", state.message)
-        state.msg_until = time.time() + MSG_DURATION
 
-        # Calculate scroll interval based on the width of the message
+        # Scroll at a fixed, readable speed. Extend the display duration for long
+        # messages instead of making them move faster to fit MSG_DURATION.
         message_width = base_font.string_width(state.message)
         if message_width > PANEL_WIDTH:
             logger.info("Message width: %d", message_width)
-            scroll_duration = 0.9 * MSG_DURATION  # 90% of MSG_DURATION
+            state.scroll_interval = SCROLL_INTERVAL
+            scroll_duration = (
+                message_width - PANEL_WIDTH
+            ) * state.scroll_interval
             logger.info("Scroll duration: %f", scroll_duration)
-            state.scroll_interval = scroll_duration / (message_width - PANEL_WIDTH)
             logger.info("Scroll interval: %f", state.scroll_interval)
+            state.msg_until = now + max(
+                MSG_DURATION, scroll_duration + SCROLL_END_PAUSE
+            )
         else:
             state.scroll_interval = 0
+            state.msg_until = now + MSG_DURATION
     elif msg.topic == TOPIC_POWER_SET:
         if msg.payload in (b"ON", b"OFF"):
             state.power_command = msg.payload == b"ON"
@@ -278,12 +290,17 @@ def panel_update():
         state.client.publish(TOPIC_POWER, b"ON" if state.powered else b"OFF")
     if state.powered:
         if state.msg_until is not None:
-            if base_font.string_width(state.message) > PANEL_WIDTH:
+            message_width = base_font.string_width(state.message)
+            if message_width > PANEL_WIDTH:
+                now = time.time()
+                if state.scroll_started_at is None:
+                    state.scroll_started_at = now
+                state.msg_offset = min(
+                    (now - state.scroll_started_at) / state.scroll_interval,
+                    message_width - PANEL_WIDTH,
+                )
                 logger.debug("Scrolling message, offset %d", state.msg_offset)
                 new_bitmap = render_text_bitmap(state.message, int(-state.msg_offset))
-                state.msg_offset = (
-                    state.msg_offset + state.scroll_interval
-                ) % base_font.string_width(state.message)
             else:
                 logger.debug(
                     "String is shorter (%d) than panel width, no scrolling",
@@ -330,7 +347,8 @@ def main():
         state.powered = True
         state.message = "Hello, ~ Resistor! This is a very long message to debug."
         state.msg_until = time.time() + 12
-        state.scroll_interval = 0.1
+        state.scroll_started_at = time.time()
+        state.scroll_interval = SCROLL_INTERVAL
     else:
         logger.info("Debug mode not enabled.")
 
