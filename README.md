@@ -46,6 +46,8 @@ cd /home/nycr/Hexascroller/hexaservice
 MQTT_HOST=mymqtthost.local MQTT_USER=mqttuser MQTT_PASS=verysecret /usr/bin/python3 service.py
 ```
 
+Hexascroller gets detected automagically by Home Assistant.
+
 The host is a Raspberry Pi Zero W Rev 1.1. Three Teensies on the usb hub run the displays.
 
 Run in debug mode with service.py debug in one terminal, debug.py in another on the same machine.

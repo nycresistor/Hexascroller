@@ -30,6 +30,7 @@ The service also publishes an availability topic:
 """
 
 import dataclasses
+import json
 import logging
 import sys
 import time
@@ -52,7 +53,7 @@ from led_panel import (
 )
 from fontutil import base_font
 
-default_mqtt_host = os.environ.get("MQTT_BROKER", "mqttbroker.lan")
+default_mqtt_host = os.environ.get("MQTT_HOST", "mqttbroker.lan")
 default_mqtt_user = os.environ.get("MQTT_USER")
 default_mqtt_pass = os.environ.get("MQTT_PASS")
 
@@ -98,6 +99,7 @@ TOPIC_INVERT: str = f"{TOPIC_PREFIX}/invert"
 TOPIC_INVERT_SET: str = f"{TOPIC_INVERT}/set"
 TOPIC_MESSAGE: str = f"{TOPIC_PREFIX}/message"
 TOPIC_AVAILABILITY: str = f"{TOPIC_PREFIX}/available"
+DISCOVERY_PREFIX: str = "homeassistant"
 
 
 @dataclasses.dataclass
@@ -220,6 +222,31 @@ def render_text_bitmap(text: str, offset: int) -> bytes:
     return bitmap
 
 
+def publish_discovery(client: mqtt.Client):
+    """Register both switches with Home Assistant, including after reconnects."""
+    for unique_id, name, topic in (
+        ("hexascroller", None, TOPIC_POWER),
+        ("hexascroller_invert", "Invert", TOPIC_INVERT),
+    ):
+        config = {
+            "unique_id": unique_id,
+            "name": name,
+            "state_topic": topic,
+            "command_topic": f"{topic}/set",
+            "availability_topic": TOPIC_AVAILABILITY,
+            "device": {
+                "identifiers": [TOPIC_PREFIX],
+                "name": "Hexascroller",
+            },
+        }
+        client.publish(
+            f"{DISCOVERY_PREFIX}/switch/{unique_id}/config",
+            json.dumps(config),
+            qos=1,
+            retain=True,
+        )
+
+
 def on_mqtt_connect(client: mqtt.Client, userdata, flags, resultcode):
     """Callback function when the MQTT client connects to the broker."""
     power_state = b"ON" if state.powered else b"OFF"
@@ -231,6 +258,9 @@ def on_mqtt_connect(client: mqtt.Client, userdata, flags, resultcode):
         resultcode,
         userdata,
     )
+    if resultcode != 0:
+        return
+    publish_discovery(client)
     client.publish(TOPIC_AVAILABILITY, "online", retain=True)
     client.publish(TOPIC_POWER, power_state, qos=0, retain=True)
     client.publish(TOPIC_INVERT, invert_state, qos=0, retain=True)
@@ -277,7 +307,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, msg: mqtt.MQTTMessage):
         if msg.payload in (b"ON", b"OFF"):
             state.inverted = msg.payload == b"ON"
             logger.info("Invert set to %s", state.inverted)
-            client.publish(TOPIC_INVERT, msg.payload)
+            client.publish(TOPIC_INVERT, msg.payload, retain=True)
         else:
             logger.warning("Invalid payload received for invert state: %s", msg.payload)
 
@@ -287,7 +317,7 @@ def panel_update():
     if state.power_command != state.powered:
         panels[0].set_relay(state.power_command)
         state.powered = state.power_command
-        state.client.publish(TOPIC_POWER, b"ON" if state.powered else b"OFF")
+        state.client.publish(TOPIC_POWER, b"ON" if state.powered else b"OFF", retain=True)
     if state.powered:
         if state.msg_until is not None:
             message_width = base_font.string_width(state.message)
@@ -385,6 +415,7 @@ def main():
     if user:
         logger.info("Logging into MQTT as %s", user)
         client.username_pw_set(user, password)
+    client.will_set(TOPIC_AVAILABILITY, "offline", qos=1, retain=True)
     client.connect_async(host, 1883, 60)
     # Start the MQTT loop in a separate thread
     client.loop_start()
@@ -402,8 +433,7 @@ def main():
     # panel_thread_instance.join()
 
     # Shut down the MQTT connection
-    client.publish(TOPIC_POWER, b"OFF", qos=0)
-    client.publish(TOPIC_AVAILABILITY, "offline")
+    client.publish(TOPIC_POWER, b"OFF", qos=0, retain=True)
     publish_result = client.publish(TOPIC_AVAILABILITY, "offline", retain=True)
     publish_result.wait_for_publish()
     client.loop_stop()
